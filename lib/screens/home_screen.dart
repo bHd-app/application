@@ -24,7 +24,11 @@ class StartPage extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF171214), Color(0xFF3B1E2B), coral],
+                colors: [
+                  Color(0xFF062B8F),
+                  Color(0xFFB72BFF),
+                  Color(0xFFFF4FA3),
+                ],
               ),
             ),
             child: SafeArea(
@@ -34,19 +38,11 @@ class StartPage extends StatelessWidget {
                   const BrandHeader(onDark: true),
                   const SizedBox(height: 34),
                   Text(
-                    'How do you want to gift today?',
+                    'Choose the experience you want to gift.',
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w900,
                       height: 1.02,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Pick a ready day, build your own experience path, or jump back to the card you are creating.',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.76),
-                      height: 1.35,
                     ),
                   ),
                   const SizedBox(height: 30),
@@ -75,14 +71,11 @@ class StartPage extends StatelessWidget {
                   StartActionCard(
                     number: '3',
                     title: 'View my gift card',
-                    description:
-                        '${controller.gifts.length} stops, \$${controller.total} total.',
+                    description: '${controller.savedCards.length} saved cards.',
                     icon: Icons.credit_card,
                     color: violet,
-                    onTap: () => push(
-                      context,
-                      GeneratedCardPage(controller: controller),
-                    ),
+                    onTap: () =>
+                        push(context, GiftCardsPage(controller: controller)),
                   ),
                 ],
               ),
@@ -114,107 +107,106 @@ class ReadyPackagesPage extends StatelessWidget {
         separatorBuilder: (context, index) => const SizedBox(height: 16),
         itemBuilder: (context, index) {
           final package = packages[index];
-          final gifts = package.items
-              .map(controller.apiService.packageItemToGift)
-              .whereType<PlannedGift>()
-              .toList();
-          final total = gifts.fold<int>(
-            0,
-            (sum, gift) => sum + gift.place.price,
-          );
-
-          return Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              gradient: LinearGradient(
-                colors: [package.themeColor, ink],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: package.themeColor.withValues(alpha: 0.25),
-                  blurRadius: 20,
-                  offset: const Offset(0, 12),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        package.name,
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w900,
-                            ),
-                      ),
-                    ),
-                    Text(
-                      '\$$total',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  package.description,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.76),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ...gifts.map(
-                  (gift) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      children: [
-                        Icon(gift.icon, color: Colors.white, size: 18),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '${gift.slot}  ${gift.place.name}',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: () {
-                    controller.usePackage(package);
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => BuilderMenuPage(controller: controller),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.edit),
-                  label: const Text('Use package and edit'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: ink,
-                  ),
-                ),
-              ],
+          return ReadyPackageCard(
+            controller: controller,
+            package: package,
+            onTap: () => push(
+              context,
+              ReadyPackageDetailPage(controller: controller, package: package),
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Screen that reveals the itinerary for a ready-made package.
+class ReadyPackageDetailPage extends StatelessWidget {
+  /// Creates a ready package detail page.
+  const ReadyPackageDetailPage({
+    super.key,
+    required this.controller,
+    required this.package,
+  });
+
+  /// Shared gift plan controller.
+  final GiftPlanController controller;
+
+  /// Package shown on this page.
+  final ReadyPackage package;
+
+  @override
+  Widget build(BuildContext context) {
+    final gifts = package.items
+        .map(controller.apiService.packageItemToGift)
+        .whereType<PlannedGift>()
+        .toList();
+    final total = gifts.fold<int>(0, (sum, gift) => sum + gift.place.price);
+
+    return Scaffold(
+      appBar: appBar(context, package.name),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(26),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Image.asset(package.imageAsset, fit: BoxFit.cover),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  package.description,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    height: 1.18,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '\$$total',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: package.themeColor,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          DayTimeline(gifts: gifts),
+          const SizedBox(height: 14),
+          FilledButton.icon(
+            onPressed: () {
+              final error = controller.usePackage(package);
+              if (error != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(error),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                return;
+              }
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BuilderMenuPage(controller: controller),
+                ),
+              );
+            },
+            icon: const Icon(Icons.edit),
+            label: const Text('Use package and edit'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -399,9 +391,91 @@ class _CategoryPageState extends State<CategoryPage> {
 }
 
 /// Screen that shows the generated card preview and final itinerary.
-class GeneratedCardPage extends StatelessWidget {
+class GeneratedCardPage extends StatefulWidget {
   /// Creates the generated card page.
   const GeneratedCardPage({super.key, required this.controller});
+
+  /// Shared gift plan controller.
+  final GiftPlanController controller;
+
+  @override
+  State<GeneratedCardPage> createState() => _GeneratedCardPageState();
+}
+
+class _GeneratedCardPageState extends State<GeneratedCardPage> {
+  bool _isBuying = false;
+  GiftCardPlan? _issuedPlan;
+
+  Future<void> _buyCard() async {
+    if (widget.controller.gifts.isEmpty || _isBuying) return;
+
+    setState(() => _isBuying = true);
+    await Future<void>.delayed(const Duration(milliseconds: 1500));
+    final plan = widget.controller.purchaseCurrentPlan();
+    if (!mounted) return;
+    setState(() {
+      _isBuying = false;
+      _issuedPlan = plan;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: widget.controller,
+      builder: (context, _) {
+        return Scaffold(
+          appBar: appBar(context, 'Generated card'),
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
+            children: [
+              CreditGiftCard.fromController(controller: widget.controller),
+              const SizedBox(height: 24),
+              Text(
+                'Day timeline',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 12),
+              DayTimeline(
+                gifts: widget.controller.gifts,
+                onRemove: widget.controller.removeGift,
+              ),
+              const SizedBox(height: 18),
+              if (_issuedPlan == null)
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 280),
+                  child: _isBuying
+                      ? const PurchaseProcessingPanel()
+                      : FilledButton.icon(
+                          key: const ValueKey('buy-button'),
+                          onPressed: widget.controller.gifts.isEmpty
+                              ? null
+                              : _buyCard,
+                          icon: const Icon(Icons.shopping_bag),
+                          label: const Text('Buy this gift card'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                        ),
+                ),
+              if (_issuedPlan != null) ...[
+                const SizedBox(height: 18),
+                PurchaseCelebration(plan: _issuedPlan!),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Screen that lists all saved drafts and purchased cards.
+class GiftCardsPage extends StatelessWidget {
+  /// Creates the saved cards page.
+  const GiftCardsPage({super.key, required this.controller});
 
   /// Shared gift plan controller.
   final GiftPlanController controller;
@@ -412,36 +486,80 @@ class GeneratedCardPage extends StatelessWidget {
       animation: controller,
       builder: (context, _) {
         return Scaffold(
-          appBar: appBar(context, 'Generated card'),
-          body: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
-            children: [
-              CreditGiftCard(controller: controller),
-              const SizedBox(height: 24),
-              Text(
-                'Day timeline',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
+          appBar: appBar(context, 'My gift cards'),
+          body: controller.savedCards.isEmpty
+              ? const EmptyGiftCardsView()
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+                  itemCount: controller.savedCards.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final card = controller.savedCards[index];
+                    return SavedGiftCardTile(
+                      card: card,
+                      onTap: () => push(
+                        context,
+                        GiftCardDetailPage(
+                          card: card,
+                          onDelete: () {
+                            controller.deleteSavedCard(card.id);
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                      onDelete: () => controller.deleteSavedCard(card.id),
+                    );
+                  },
                 ),
-              ),
-              const SizedBox(height: 12),
-              DayTimeline(
-                gifts: controller.gifts,
-                onRemove: controller.removeGift,
-              ),
-              const SizedBox(height: 18),
-              FilledButton.icon(
-                onPressed: controller.gifts.isEmpty ? null : () {},
-                icon: const Icon(Icons.shopping_bag),
-                label: const Text('Buy this gift card'),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-            ],
-          ),
         );
       },
+    );
+  }
+}
+
+/// Screen that shows one saved card story and itinerary.
+class GiftCardDetailPage extends StatelessWidget {
+  /// Creates a saved card detail page.
+  const GiftCardDetailPage({
+    super.key,
+    required this.card,
+    required this.onDelete,
+  });
+
+  /// Saved card snapshot.
+  final GiftCardPlan card;
+
+  /// Deletes this card from the library.
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: appBar(context, 'Gift card story'),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        children: [
+          CreditGiftCard.fromPlan(card: card),
+          const SizedBox(height: 18),
+          CardStoryPanel(card: card),
+          const SizedBox(height: 18),
+          Text(
+            'Where to be',
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 12),
+          GiftItineraryTable(gifts: card.gifts),
+          const SizedBox(height: 18),
+          OutlinedButton.icon(
+            onPressed: onDelete,
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Delete this card'),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -72,12 +72,67 @@ String shortDate(DateTime date) {
 
 /// Converts a time slot label into sortable minutes after midnight.
 int slotSortValue(String slot) {
-  final match = RegExp(r'(\d{1,2}):(\d{2})?\s*(AM|PM)?').firstMatch(slot);
-  if (match == null) return 2400;
+  return slotRange(slot)?.start ?? 2400;
+}
+
+/// Time range in minutes after midnight.
+class SlotRange {
+  /// Creates a parsed time range.
+  const SlotRange({required this.start, required this.end});
+
+  /// Range start in minutes after midnight.
+  final int start;
+
+  /// Range end in minutes after midnight.
+  final int end;
+
+  /// Whether this range overlaps another range.
+  bool overlaps(SlotRange other) {
+    return start < other.end && other.start < end;
+  }
+}
+
+/// Parses a slot label into a comparable time range.
+SlotRange? slotRange(String slot) {
+  final parts = slot.split('-');
+  final startLabel = parts.first.trim();
+  final endLabel = parts.length > 1 ? parts.sublist(1).join('-').trim() : null;
+  final endMeridiem = _meridiemIn(endLabel);
+  final start = _parseTime(startLabel, fallbackMeridiem: endMeridiem);
+
+  if (start == null) return null;
+
+  final end = endLabel == null
+      ? start + 60
+      : _parseTime(endLabel, fallbackMeridiem: _meridiemIn(startLabel));
+
+  if (end == null) return SlotRange(start: start, end: start + 60);
+
+  return SlotRange(start: start, end: end <= start ? end + 1440 : end);
+}
+
+/// Returns true when two slot labels overlap.
+bool slotsOverlap(String first, String second) {
+  final firstRange = slotRange(first);
+  final secondRange = slotRange(second);
+
+  if (firstRange == null || secondRange == null) return first == second;
+
+  return firstRange.overlaps(secondRange);
+}
+
+String? _meridiemIn(String? value) {
+  if (value == null) return null;
+  return RegExp(r'\b(AM|PM)\b').firstMatch(value)?.group(1);
+}
+
+int? _parseTime(String value, {String? fallbackMeridiem}) {
+  final match = RegExp(r'(\d{1,2}):(\d{2})?\s*(AM|PM)?').firstMatch(value);
+  if (match == null) return null;
 
   var hour = int.parse(match.group(1)!);
   final minute = int.tryParse(match.group(2) ?? '0') ?? 0;
-  final meridiem = match.group(3);
+  final meridiem = match.group(3) ?? fallbackMeridiem;
 
   if (meridiem == 'PM' && hour != 12) hour += 12;
   if (meridiem == 'AM' && hour == 12) hour = 0;

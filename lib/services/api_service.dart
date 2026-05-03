@@ -61,55 +61,184 @@ class GiftPlanController extends ChangeNotifier {
   /// Gift stops currently selected by the user.
   final List<PlannedGift> gifts = [];
 
+  /// Cards saved from drafts and mock purchases.
+  final List<GiftCardPlan> savedCards = [];
+
+  String? _activeCardId;
+
   /// Total price for all planned gifts.
   int get total => gifts.fold(0, (sum, gift) => sum + gift.place.price);
 
   /// Replaces the selected gift delivery date.
   void updateDate(DateTime value) {
     date = value;
+    _saveCurrentDraft();
     notifyListeners();
   }
 
   /// Replaces the selected card recipient name.
   void updateRecipient(String value) {
     recipient = value;
+    _saveCurrentDraft();
     notifyListeners();
   }
 
   /// Replaces the selected card note.
   void updateNote(String value) {
     note = value;
+    _saveCurrentDraft();
     notifyListeners();
   }
 
   /// Adds a gift stop and keeps the itinerary sorted by time.
-  void addGift(PlannedGift gift) {
+  String? addGift(PlannedGift gift) {
+    final conflict = findTimeConflict(gift, gifts);
+    if (conflict != null) {
+      return '${gift.place.name} overlaps with ${conflict.place.name} at ${conflict.slot}. Choose another time.';
+    }
+
     gifts.add(gift);
     gifts.sort(
       (a, b) => slotSortValue(a.slot).compareTo(slotSortValue(b.slot)),
     );
+    _saveCurrentDraft();
     notifyListeners();
+    return null;
   }
 
   /// Removes a gift stop from the itinerary.
   void removeGift(PlannedGift gift) {
     gifts.remove(gift);
+    _saveCurrentDraft();
     notifyListeners();
   }
 
   /// Replaces the current itinerary with a ready package.
-  void usePackage(ReadyPackage package) {
-    gifts
-      ..clear()
-      ..addAll(
+  String? usePackage(ReadyPackage package) {
+    final packageGifts =
         package.items
             .map(apiService.packageItemToGift)
-            .whereType<PlannedGift>(),
-      );
-    gifts.sort(
-      (a, b) => slotSortValue(a.slot).compareTo(slotSortValue(b.slot)),
-    );
+            .whereType<PlannedGift>()
+            .toList()
+          ..sort(
+            (a, b) => slotSortValue(a.slot).compareTo(slotSortValue(b.slot)),
+          );
+    final conflict = _findInternalConflict(packageGifts);
+    if (conflict != null) return conflict;
+
+    gifts
+      ..clear()
+      ..addAll(packageGifts);
+    _saveCurrentDraft();
     notifyListeners();
+    return null;
+  }
+
+  /// Finds an existing gift that conflicts with a candidate gift.
+  PlannedGift? findTimeConflict(
+    PlannedGift candidate,
+    List<PlannedGift> existing,
+  ) {
+    for (final gift in existing) {
+      if (slotsOverlap(candidate.slot, gift.slot)) return gift;
+    }
+    return null;
+  }
+
+  /// Saves the current builder state as a draft card.
+  void saveCurrentDraft() {
+    _saveCurrentDraft();
+    notifyListeners();
+  }
+
+  /// Marks the current draft as purchased and returns the issued card.
+  GiftCardPlan? purchaseCurrentPlan() {
+    if (gifts.isEmpty) return null;
+    final now = DateTime.now();
+    _saveCurrentDraft(now: now);
+    final index = savedCards.indexWhere((card) => card.id == _activeCardId);
+    if (index == -1) return null;
+
+    final purchasedCard = savedCards[index].copyWith(
+      status: GiftCardStatus.purchased,
+      updatedAt: now,
+      issuedAt: now,
+      cardNumber: _cardNumber(now),
+    );
+    savedCards[index] = purchasedCard;
+    _activeCardId = null;
+    notifyListeners();
+    return purchasedCard;
+  }
+
+  /// Deletes a saved draft or purchased card.
+  void deleteSavedCard(String id) {
+    savedCards.removeWhere((card) => card.id == id);
+    if (_activeCardId == id) _activeCardId = null;
+    notifyListeners();
+  }
+
+  void _saveCurrentDraft({DateTime? now}) {
+    if (!_hasMeaningfulDraft()) return;
+
+    final timestamp = now ?? DateTime.now();
+    final snapshot = List<PlannedGift>.unmodifiable(gifts);
+    final existingIndex = savedCards.indexWhere(
+      (card) => card.id == _activeCardId,
+    );
+
+    if (existingIndex == -1) {
+      final id = 'card-${timestamp.microsecondsSinceEpoch}';
+      _activeCardId = id;
+      savedCards.add(
+        GiftCardPlan(
+          id: id,
+          recipient: recipient,
+          note: note,
+          date: date,
+          gifts: snapshot,
+          status: GiftCardStatus.draft,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        ),
+      );
+      return;
+    }
+
+    final existing = savedCards[existingIndex];
+    savedCards[existingIndex] = existing.copyWith(
+      recipient: recipient,
+      note: note,
+      date: date,
+      gifts: snapshot,
+      status: existing.status == GiftCardStatus.purchased
+          ? GiftCardStatus.purchased
+          : GiftCardStatus.draft,
+      updatedAt: timestamp,
+    );
+  }
+
+  bool _hasMeaningfulDraft() {
+    return gifts.isNotEmpty ||
+        recipient.trim() != 'Maya' ||
+        note.trim() != 'A whole day of little surprises, planned just for you.';
+  }
+
+  String? _findInternalConflict(List<PlannedGift> packageGifts) {
+    for (var i = 0; i < packageGifts.length; i++) {
+      for (var j = i + 1; j < packageGifts.length; j++) {
+        if (slotsOverlap(packageGifts[i].slot, packageGifts[j].slot)) {
+          return '${packageGifts[i].place.name} overlaps with ${packageGifts[j].place.name}. Choose another package or edit the times.';
+        }
+      }
+    }
+    return null;
+  }
+
+  String _cardNumber(DateTime now) {
+    final seed = now.microsecondsSinceEpoch.toString();
+    final tail = seed.substring(seed.length - 12);
+    return '5482 ${tail.substring(0, 4)} ${tail.substring(4, 8)} ${tail.substring(8)}';
   }
 }
 
@@ -503,6 +632,7 @@ const readyPackages = [
   ReadyPackage(
     name: 'Romantic Spark',
     description: 'Cafe, gallery, dinner, and a late jazz table.',
+    imageAsset: 'assets/package_covers/romantic_spark.png',
     themeColor: Color(0xFFE94F8A),
     items: [
       PackageItem(
@@ -534,6 +664,7 @@ const readyPackages = [
   ReadyPackage(
     name: 'Adventure Saturday',
     description: 'Morning kayak, lunch, and a cinema finish.',
+    imageAsset: 'assets/package_covers/adventure_saturday.png',
     themeColor: Color(0xFF00A6A6),
     items: [
       PackageItem(
@@ -559,6 +690,7 @@ const readyPackages = [
   ReadyPackage(
     name: 'Relax Reset',
     description: 'Yoga, spa, ice cream, and hotel check-in.',
+    imageAsset: 'assets/package_covers/relax_reset.png',
     themeColor: Color(0xFF9B5DE5),
     items: [
       PackageItem(

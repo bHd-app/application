@@ -161,6 +161,151 @@ class StartActionCard extends StatelessWidget {
   }
 }
 
+/// Visual card for one ready package cover.
+class ReadyPackageCard extends StatelessWidget {
+  /// Creates a ready package card.
+  const ReadyPackageCard({
+    super.key,
+    required this.controller,
+    required this.package,
+    required this.onTap,
+  });
+
+  /// Controller used to resolve package item details.
+  final GiftPlanController controller;
+
+  /// Package displayed by the card.
+  final ReadyPackage package;
+
+  /// Opens the package detail screen.
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final gifts = package.items
+        .map(controller.apiService.packageItemToGift)
+        .whereType<PlannedGift>()
+        .toList();
+    final total = gifts.fold<int>(0, (sum, gift) => sum + gift.place.price);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(26),
+        onTap: onTap,
+        child: Ink(
+          height: 238,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(26),
+            boxShadow: [
+              BoxShadow(
+                color: package.themeColor.withValues(alpha: 0.24),
+                blurRadius: 22,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(26),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset(package.imageAsset, fit: BoxFit.cover),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withValues(alpha: 0.64),
+                        Colors.black.withValues(alpha: 0.08),
+                        package.themeColor.withValues(alpha: 0.72),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              package.name,
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Text(
+                              '\$$total',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
+                                    color: ink,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                      Text(
+                        package.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              height: 1.18,
+                            ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.route,
+                            color: Colors.white.withValues(alpha: 0.82),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${gifts.length} planned stops',
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(
+                                  color: Colors.white.withValues(alpha: 0.82),
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                          const Spacer(),
+                          const Icon(Icons.arrow_forward, color: Colors.white),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Form panel where users set gift date, recipient, and card note.
 class GiftSetupPanel extends StatefulWidget {
   /// Creates the gift setup panel.
@@ -524,7 +669,7 @@ class _PlaceSelectionCardState extends State<PlaceSelectionCard> {
             width: double.infinity,
             child: FilledButton.icon(
               onPressed: () {
-                widget.controller.addGift(
+                final error = widget.controller.addGift(
                   PlannedGift(
                     category: widget.category.name,
                     subcategory: widget.subcategory.name,
@@ -534,6 +679,15 @@ class _PlaceSelectionCardState extends State<PlaceSelectionCard> {
                     color: widget.category.color,
                   ),
                 );
+                if (error != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(error),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  return;
+                }
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
@@ -557,13 +711,13 @@ class _PlaceSelectionCardState extends State<PlaceSelectionCard> {
 /// Timeline that renders each selected gift in chronological order.
 class DayTimeline extends StatelessWidget {
   /// Creates the planned day timeline.
-  const DayTimeline({super.key, required this.gifts, required this.onRemove});
+  const DayTimeline({super.key, required this.gifts, this.onRemove});
 
   /// Gifts shown in the timeline.
   final List<PlannedGift> gifts;
 
   /// Callback invoked when a gift is removed.
-  final ValueChanged<PlannedGift> onRemove;
+  final ValueChanged<PlannedGift>? onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -631,10 +785,11 @@ class DayTimeline extends StatelessWidget {
                   context,
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
               ),
-              IconButton(
-                onPressed: () => onRemove(gift),
-                icon: const Icon(Icons.close),
-              ),
+              if (onRemove != null)
+                IconButton(
+                  onPressed: () => onRemove!(gift),
+                  icon: const Icon(Icons.close),
+                ),
             ],
           ),
         );
@@ -645,20 +800,52 @@ class DayTimeline extends StatelessWidget {
 
 /// Visual preview of the generated gift card.
 class CreditGiftCard extends StatelessWidget {
-  /// Creates the generated gift card preview.
-  const CreditGiftCard({super.key, required this.controller});
+  /// Creates a generated gift card preview from the builder state.
+  CreditGiftCard.fromController({
+    super.key,
+    required GiftPlanController controller,
+  }) : recipient = controller.recipient,
+       note = controller.note,
+       date = controller.date,
+       total = controller.total,
+       cardNumber = '5482 0917 4421',
+       status = GiftCardStatus.draft;
 
-  /// Controller that provides recipient, note, date, and total value.
-  final GiftPlanController controller;
+  /// Creates a generated gift card preview from a saved card.
+  CreditGiftCard.fromPlan({super.key, required GiftCardPlan card})
+    : recipient = card.recipient,
+      note = card.note,
+      date = card.date,
+      total = card.total,
+      cardNumber = card.cardNumber ?? '5482 0917 4421',
+      status = card.status;
+
+  /// Recipient shown on the card.
+  final String recipient;
+
+  /// Personal note shown on the card.
+  final String note;
+
+  /// Scheduled gift date.
+  final DateTime date;
+
+  /// Total card value.
+  final int total;
+
+  /// Display card number.
+  final String cardNumber;
+
+  /// Draft or purchased state.
+  final GiftCardStatus status;
 
   @override
   Widget build(BuildContext context) {
-    final recipient = controller.recipient.trim().isEmpty
+    final displayRecipient = recipient.trim().isEmpty
         ? 'Someone special'
-        : controller.recipient.trim();
-    final note = controller.note.trim().isEmpty
+        : recipient.trim();
+    final displayNote = note.trim().isEmpty
         ? 'A full day of gifts, planned with care.'
-        : controller.note.trim();
+        : note.trim();
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -696,7 +883,7 @@ class CreditGiftCard extends StatelessWidget {
           ),
           const SizedBox(height: 30),
           Text(
-            '\$${controller.total}',
+            '\$$total',
             style: Theme.of(context).textTheme.displaySmall?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w900,
@@ -704,7 +891,7 @@ class CreditGiftCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'FOR $recipient',
+            'FOR $displayRecipient',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w900,
@@ -712,7 +899,7 @@ class CreditGiftCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            note,
+            displayNote,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.78),
               height: 1.35,
@@ -722,14 +909,14 @@ class CreditGiftCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: CardMeta(
-                  label: 'DATE',
-                  value: shortDate(controller.date),
-                ),
+                child: CardMeta(label: 'DATE', value: shortDate(date)),
               ),
               const SizedBox(width: 14),
-              const Expanded(
-                child: CardMeta(label: 'CARD', value: '5482 0917 4421'),
+              Expanded(
+                child: CardMeta(
+                  label: status == GiftCardStatus.purchased ? 'ISSUED' : 'CARD',
+                  value: cardNumber,
+                ),
               ),
             ],
           ),
@@ -804,6 +991,478 @@ class CardMeta extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Loading panel shown during the mock purchase flow.
+class PurchaseProcessingPanel extends StatelessWidget {
+  /// Creates a mock purchase progress panel.
+  const PurchaseProcessingPanel({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey('processing-panel'),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0A4CFF), Color(0xFFFF4FA3)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              'Processing your gift card...',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Success panel shown after a mock purchase is completed.
+class PurchaseCelebration extends StatelessWidget {
+  /// Creates a purchase celebration panel.
+  const PurchaseCelebration({super.key, required this.plan});
+
+  /// Purchased card snapshot.
+  final GiftCardPlan plan;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(26),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0A4CFF), Color(0xFF8F3DFF), Color(0xFFFF4FA3)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFF4FA3).withValues(alpha: 0.24),
+            blurRadius: 22,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.celebration, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Purchase completed successfully',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    height: 1.12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Your generated file is ready: topol-gift-${plan.id}.pdf',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.white.withValues(alpha: 0.78),
+            ),
+          ),
+          const SizedBox(height: 16),
+          GiftItineraryTable(gifts: plan.gifts, onDark: true),
+          const SizedBox(height: 14),
+          FilledButton.icon(
+            onPressed: () => _showEmailPreview(context, plan),
+            icon: const Icon(Icons.mail),
+            label: const Text('Email generated file'),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: ink,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEmailPreview(BuildContext context, GiftCardPlan plan) {
+    final recipient = plan.recipient.trim().isEmpty
+        ? 'Someone special'
+        : plan.recipient.trim();
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Email preview'),
+          content: Text(
+            'Subject: Your Topol Gift card is ready\n\n'
+            'Hi $recipient,\n\n'
+            'Your experience gift card has been purchased successfully. '
+            'The attached file includes the gift card, the personal note, '
+            'and the full table of where to be at each time.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Compact itinerary table used by cards and purchase success.
+class GiftItineraryTable extends StatelessWidget {
+  /// Creates an itinerary table.
+  const GiftItineraryTable({
+    super.key,
+    required this.gifts,
+    this.onDark = false,
+  });
+
+  /// Gifts rendered as itinerary rows.
+  final List<PlannedGift> gifts;
+
+  /// Whether the table sits on a dark background.
+  final bool onDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final background = onDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.white;
+    final borderColor = onDark
+        ? Colors.white.withValues(alpha: 0.14)
+        : const Color(0xFFE9D9CA);
+    final primary = onDark ? Colors.white : ink;
+    final secondary = onDark
+        ? Colors.white.withValues(alpha: 0.72)
+        : Colors.black.withValues(alpha: 0.58);
+
+    if (gifts.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: borderColor),
+        ),
+        child: Text(
+          'No stops have been added yet.',
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: secondary),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        children: [
+          _ItineraryRow(
+            time: 'Time',
+            place: 'Place',
+            detail: 'Experience',
+            primary: primary,
+            secondary: secondary,
+            isHeader: true,
+          ),
+          ...gifts.map(
+            (gift) => _ItineraryRow(
+              time: gift.slot,
+              place: gift.place.name,
+              detail: '${gift.category} at ${gift.subcategory}',
+              primary: primary,
+              secondary: secondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ItineraryRow extends StatelessWidget {
+  const _ItineraryRow({
+    required this.time,
+    required this.place,
+    required this.detail,
+    required this.primary,
+    required this.secondary,
+    this.isHeader = false,
+  });
+
+  final String time;
+  final String place;
+  final String detail;
+  final Color primary;
+  final Color secondary;
+  final bool isHeader;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 92,
+            child: Text(
+              time,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: isHeader ? secondary : primary,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  place,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: primary,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  detail,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: secondary),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tile for a saved draft or purchased card.
+class SavedGiftCardTile extends StatelessWidget {
+  /// Creates a saved card tile.
+  const SavedGiftCardTile({
+    super.key,
+    required this.card,
+    required this.onTap,
+    required this.onDelete,
+  });
+
+  /// Saved card snapshot.
+  final GiftCardPlan card;
+
+  /// Opens the card story.
+  final VoidCallback onTap;
+
+  /// Deletes the card.
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final recipient = card.recipient.trim().isEmpty
+        ? 'Someone special'
+        : card.recipient.trim();
+    final statusColor = card.status == GiftCardStatus.purchased
+        ? violet
+        : coral;
+
+    return Dismissible(
+      key: ValueKey(card.id),
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) => onDelete(),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 18),
+        decoration: BoxDecoration(
+          color: coral,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(22),
+          onTap: onTap,
+          child: Ink(
+            padding: const EdgeInsets.all(16),
+            decoration: panelDecoration(),
+            child: Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [statusColor, const Color(0xFF0A4CFF)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(17),
+                  ),
+                  child: const Icon(Icons.card_giftcard, color: Colors.white),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        recipient,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                      Text(
+                        '${formatDate(card.date)} - ${card.gifts.length} stops',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.black.withValues(alpha: 0.56),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '\$${card.total}',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      card.status == GiftCardStatus.purchased
+                          ? 'PURCHASED'
+                          : 'DRAFT',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: statusColor,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete_outline),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Empty state for the saved card list.
+class EmptyGiftCardsView extends StatelessWidget {
+  /// Creates an empty saved cards view.
+  const EmptyGiftCardsView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          'No gift cards yet. Start customizing one and it will appear here.',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            color: Colors.black.withValues(alpha: 0.58),
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Story panel for a saved card detail view.
+class CardStoryPanel extends StatelessWidget {
+  /// Creates a saved card story panel.
+  const CardStoryPanel({super.key, required this.card});
+
+  /// Saved card snapshot.
+  final GiftCardPlan card;
+
+  @override
+  Widget build(BuildContext context) {
+    final recipient = card.recipient.trim().isEmpty
+        ? 'Someone special'
+        : card.recipient.trim();
+    final opening = card.status == GiftCardStatus.purchased
+        ? 'This card is ready to send.'
+        : 'This card is still a draft.';
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: panelDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            opening,
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$recipient gets a planned experience day on ${formatDate(card.date)}. '
+            'The card includes the personal note, every booked stop, and a clear '
+            'schedule for where to be throughout the day.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.black.withValues(alpha: 0.62),
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

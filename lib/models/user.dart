@@ -103,6 +103,7 @@ class ReadyPackage {
   const ReadyPackage({
     required this.name,
     required this.description,
+    required this.imageAsset,
     required this.themeColor,
     required this.items,
   });
@@ -112,6 +113,9 @@ class ReadyPackage {
 
   /// Short summary of the package itinerary.
   final String description;
+
+  /// Cover image shown on the ready package card.
+  final String imageAsset;
 
   /// Primary color used when rendering the package card.
   final Color themeColor;
@@ -141,4 +145,88 @@ class PackageItem {
 
   /// Selected time slot for the package stop.
   final String slot;
+}
+
+/// Purchase state for a saved gift card.
+enum GiftCardStatus {
+  /// Card is still being customized.
+  draft,
+
+  /// Card has completed the mock purchase flow.
+  purchased,
+}
+
+/// Snapshot of a customized or purchased gift card.
+class GiftCardPlan {
+  /// Creates an immutable gift card snapshot.
+  const GiftCardPlan({
+    required this.id,
+    required this.recipient,
+    required this.note,
+    required this.date,
+    required this.gifts,
+    required this.status,
+    required this.createdAt,
+    required this.updatedAt,
+    this.cardNumber,
+    this.issuedAt,
+  });
+
+  /// Stable identifier for this saved card.
+  final String id;
+
+  /// Recipient shown on the card.
+  final String recipient;
+
+  /// Personal note shown on the card.
+  final String note;
+
+  /// Scheduled gift date.
+  final DateTime date;
+
+  /// Gift stops saved for this card.
+  final List<PlannedGift> gifts;
+
+  /// Draft or purchased state.
+  final GiftCardStatus status;
+
+  /// Creation timestamp.
+  final DateTime createdAt;
+
+  /// Last update timestamp.
+  final DateTime updatedAt;
+
+  /// Issued card number for purchased cards.
+  final String? cardNumber;
+
+  /// Purchase completion timestamp.
+  final DateTime? issuedAt;
+
+  /// Total price for all saved stops.
+  int get total => gifts.fold(0, (sum, gift) => sum + gift.place.price);
+
+  /// Returns a modified copy of this saved card.
+  GiftCardPlan copyWith({
+    String? recipient,
+    String? note,
+    DateTime? date,
+    List<PlannedGift>? gifts,
+    GiftCardStatus? status,
+    DateTime? updatedAt,
+    String? cardNumber,
+    DateTime? issuedAt,
+  }) {
+    return GiftCardPlan(
+      id: id,
+      recipient: recipient ?? this.recipient,
+      note: note ?? this.note,
+      date: date ?? this.date,
+      gifts: gifts ?? this.gifts,
+      status: status ?? this.status,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      cardNumber: cardNumber ?? this.cardNumber,
+      issuedAt: issuedAt ?? this.issuedAt,
+    );
+  }
 }
