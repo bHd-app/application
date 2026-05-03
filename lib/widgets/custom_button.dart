@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../models/user.dart';
@@ -215,91 +217,130 @@ class ReadyPackageCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        Colors.black.withValues(alpha: 0.64),
+                        Colors.black.withValues(alpha: 0.28),
                         Colors.black.withValues(alpha: 0.08),
-                        package.themeColor.withValues(alpha: 0.72),
+                        package.themeColor.withValues(alpha: 0.22),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              package.name,
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 7,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Text(
-                              '\$$total',
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(
-                                    color: ink,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Spacer(),
-                      Text(
-                        package.description,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              height: 1.18,
-                            ),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.route,
-                            color: Colors.white.withValues(alpha: 0.82),
-                            size: 18,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '${gifts.length} planned stops',
-                            style: Theme.of(context).textTheme.labelLarge
+                Positioned(
+                  left: 14,
+                  right: 14,
+                  top: 14,
+                  child: _PackageGlassBand(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            package.name,
+                            style: Theme.of(context).textTheme.headlineSmall
                                 ?.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.82),
-                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
                                 ),
                           ),
-                          const Spacer(),
-                          const Icon(Icons.arrow_forward, color: Colors.white),
-                        ],
-                      ),
-                    ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 7,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Text(
+                            '\$$total',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  color: ink,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 14,
+                  right: 14,
+                  bottom: 14,
+                  child: _PackageGlassBand(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          package.description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                height: 1.18,
+                              ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.route,
+                              color: Colors.white.withValues(alpha: 0.82),
+                              size: 18,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${gifts.length} planned stops',
+                              style: Theme.of(context).textTheme.labelLarge
+                                  ?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.82),
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                            const Spacer(),
+                            const Icon(
+                              Icons.arrow_forward,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PackageGlassBand extends StatelessWidget {
+  const _PackageGlassBand({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: ink.withValues(alpha: 0.58),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+          ),
+          child: child,
         ),
       ),
     );
@@ -487,6 +528,7 @@ class CategoryButton extends StatelessWidget {
     super.key,
     required this.category,
     required this.onTap,
+    this.isSelected = false,
   });
 
   /// Category displayed by this tile.
@@ -495,53 +537,63 @@ class CategoryButton extends StatelessWidget {
   /// Callback invoked when the tile is tapped.
   final VoidCallback onTap;
 
+  /// Whether this category is currently selected.
+  final bool isSelected;
+
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Ink(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: category.color.withValues(alpha: 0.26)),
+            color: isSelected ? category.color : Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isSelected
+                  ? Colors.white
+                  : category.color.withValues(alpha: 0.28),
+              width: isSelected ? 2 : 1,
+            ),
             boxShadow: [
               BoxShadow(
-                color: category.color.withValues(alpha: 0.12),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
+                color: category.color.withValues(alpha: 0.16),
+                blurRadius: 12,
+                offset: const Offset(0, 7),
               ),
             ],
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
-                  color: category.color.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(15),
+                  color: isSelected
+                      ? Colors.white.withValues(alpha: 0.2)
+                      : category.color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(category.icon, color: category.color),
+                child: Icon(
+                  category.icon,
+                  color: isSelected ? Colors.white : category.color,
+                  size: 22,
+                ),
               ),
-              const Spacer(),
+              const SizedBox(height: 8),
               Text(
                 category.name,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                category.subtitle,
+                textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.black.withValues(alpha: 0.55),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: isSelected ? Colors.white : ink,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
                 ),
               ),
             ],
@@ -561,6 +613,8 @@ class PlaceSelectionCard extends StatefulWidget {
     required this.category,
     required this.subcategory,
     required this.place,
+    this.popAfterAdd = true,
+    this.buttonLabel = 'Add and return to menu',
   });
 
   /// Controller that receives the selected planned gift.
@@ -574,6 +628,12 @@ class PlaceSelectionCard extends StatefulWidget {
 
   /// Place displayed by this card.
   final GiftPlace place;
+
+  /// Whether the page should close after a successful add.
+  final bool popAfterAdd;
+
+  /// Button label shown for the add action.
+  final String buttonLabel;
 
   @override
   State<PlaceSelectionCard> createState() => _PlaceSelectionCardState();
@@ -696,10 +756,10 @@ class _PlaceSelectionCardState extends State<PlaceSelectionCard> {
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
-                Navigator.pop(context);
+                if (widget.popAfterAdd) Navigator.pop(context);
               },
               icon: const Icon(Icons.add_circle),
-              label: const Text('Add and return to menu'),
+              label: Text(widget.buttonLabel),
             ),
           ),
         ],

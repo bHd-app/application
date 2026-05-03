@@ -213,7 +213,7 @@ class ReadyPackageDetailPage extends StatelessWidget {
 }
 
 /// Screen that lets users configure card details and choose categories.
-class BuilderMenuPage extends StatelessWidget {
+class BuilderMenuPage extends StatefulWidget {
   /// Creates the builder menu page.
   const BuilderMenuPage({super.key, required this.controller});
 
@@ -221,59 +221,180 @@ class BuilderMenuPage extends StatelessWidget {
   final GiftPlanController controller;
 
   @override
-  Widget build(BuildContext context) {
-    final categories = controller.apiService.getCategories();
+  State<BuilderMenuPage> createState() => _BuilderMenuPageState();
+}
 
+class _BuilderMenuPageState extends State<BuilderMenuPage> {
+  bool showExperiencePicker = false;
+
+  @override
+  Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: controller,
+      animation: widget.controller,
       builder: (context, _) {
         return Scaffold(
           appBar: appBar(context, 'Build your gift'),
           body: ListView(
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
             children: [
-              GiftSetupPanel(controller: controller),
+              GiftSetupPanel(controller: widget.controller),
               const SizedBox(height: 18),
-              CostPulse(controller: controller),
+              CostPulse(controller: widget.controller),
               const SizedBox(height: 22),
-              Text(
-                'Choose a category',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => setState(
+                    () => showExperiencePicker = !showExperiencePicker,
+                  ),
+                  icon: Icon(
+                    showExperiencePicker ? Icons.expand_less : Icons.apps,
+                  ),
+                  label: const Text('Choose experience'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: ink,
+                    foregroundColor: Colors.white,
+                    textStyle: Theme.of(context).textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w900),
+                    padding: const EdgeInsets.symmetric(vertical: 19),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 10),
-              GridView.builder(
+              AnimatedSize(
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.easeOutCubic,
+                child: showExperiencePicker
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 14),
+                        child: InlineExperiencePicker(
+                          controller: widget.controller,
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+              const SizedBox(height: 26),
+              DayTimeline(
+                gifts: widget.controller.gifts,
+                onRemove: widget.controller.removeGift,
+              ),
+            ],
+          ),
+          bottomNavigationBar: GenerateBar(controller: widget.controller),
+        );
+      },
+    );
+  }
+}
+
+/// Inline category and place picker used by the builder screen.
+class InlineExperiencePicker extends StatefulWidget {
+  /// Creates an inline experience picker.
+  const InlineExperiencePicker({super.key, required this.controller});
+
+  /// Shared gift plan controller.
+  final GiftPlanController controller;
+
+  @override
+  State<InlineExperiencePicker> createState() => _InlineExperiencePickerState();
+}
+
+class _InlineExperiencePickerState extends State<InlineExperiencePicker> {
+  GiftCategory? selectedCategory;
+  GiftSubcategory? selectedSubcategory;
+
+  @override
+  Widget build(BuildContext context) {
+    final categories = widget.controller.apiService.getCategories();
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(26),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFEAF2FF), Color(0xFFFFE6F4)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: Colors.white),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final count = constraints.maxWidth > 430 ? 4 : 3;
+              return GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: categories.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.12,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: count,
+                  crossAxisSpacing: 9,
+                  mainAxisSpacing: 9,
+                  childAspectRatio: 0.98,
                 ),
                 itemBuilder: (context, index) {
                   final category = categories[index];
                   return CategoryButton(
                     category: category,
-                    onTap: () => push(
-                      context,
-                      CategoryPage(controller: controller, category: category),
-                    ),
+                    isSelected: selectedCategory == category,
+                    onTap: () => setState(() {
+                      selectedCategory = category;
+                      selectedSubcategory = category.subcategories.first;
+                    }),
                   );
                 },
-              ),
-              const SizedBox(height: 26),
-              DayTimeline(
-                gifts: controller.gifts,
-                onRemove: controller.removeGift,
-              ),
-            ],
+              );
+            },
           ),
-          bottomNavigationBar: GenerateBar(controller: controller),
-        );
-      },
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 260),
+            child: selectedCategory == null || selectedSubcategory == null
+                ? const SizedBox.shrink()
+                : Padding(
+                    key: ValueKey(selectedCategory!.name),
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          selectedCategory!.name,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: selectedCategory!.subcategories.map((item) {
+                            return ChoiceChip(
+                              label: Text(item.name),
+                              selected: item == selectedSubcategory,
+                              onSelected: (_) =>
+                                  setState(() => selectedSubcategory = item),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 14),
+                        ...selectedSubcategory!.places.map(
+                          (place) => PlaceSelectionCard(
+                            controller: widget.controller,
+                            category: selectedCategory!,
+                            subcategory: selectedSubcategory!,
+                            place: place,
+                            popAfterAdd: false,
+                            buttonLabel: 'Add experience',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -448,15 +569,24 @@ class _GeneratedCardPageState extends State<GeneratedCardPage> {
                   duration: const Duration(milliseconds: 280),
                   child: _isBuying
                       ? const PurchaseProcessingPanel()
-                      : FilledButton.icon(
+                      : SizedBox(
                           key: const ValueKey('buy-button'),
-                          onPressed: widget.controller.gifts.isEmpty
-                              ? null
-                              : _buyCard,
-                          icon: const Icon(Icons.shopping_bag),
-                          label: const Text('Buy this gift card'),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: widget.controller.gifts.isEmpty
+                                ? null
+                                : _buyCard,
+                            icon: const Icon(Icons.shopping_bag),
+                            label: const Text('Buy this gift card'),
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size.fromHeight(60),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 22,
+                                vertical: 20,
+                              ),
+                              textStyle: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w900),
+                            ),
                           ),
                         ),
                 ),
