@@ -1,114 +1,178 @@
 <!doctype html>
-<html lang="fa" dir="rtl">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gift Journey</title>
     <meta
       name="description"
-      content="A smooth scroll-driven gift opening experience."
+      content="A cinematic scroll-driven gift reveal with date night, nature, adventure, and cooking class moments."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Quicksand:wght@600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="grain" aria-hidden="true"></div>
+    <div class="texture-overlay" aria-hidden="true"></div>
 
-    <header class="intro">
-      <nav class="nav" aria-label="Primary">
-        <a class="brand" href="#top" aria-label="Gift Journey home">
-          <span class="brand-mark"></span>
-          <span>Gift Journey</span>
-        </a>
-        <a class="nav-link" href="#story">شروع</a>
-      </nav>
-
-      <section class="hero" id="top">
-        <p class="eyebrow">یک تجربه‌ی اسکرولی</p>
-        <h1>کادو را آرام باز کن؛ هر لایه یک خاطره بیرون می‌آورد.</h1>
-        <p class="hero-copy">
-          تصویرها، نورها و کارت‌ها با سرعت اسکرول تو حرکت می‌کنند تا لحظه‌ی
-          باز شدن کادو شبیه یک صحنه‌ی زنده باشد.
-        </p>
-      </section>
-    </header>
+    <nav class="nav" aria-label="Primary navigation">
+      <a class="brand" href="#story" aria-label="Gift Journey home">
+        <span class="brand-mark"></span>
+        <span>Gift Journey</span>
+      </a>
+      <a class="nav-link" href="#finale">Finale</a>
+    </nav>
 
     <main>
       <section class="scroll-story" id="story" aria-label="Gift opening story">
         <div class="stage">
-          <div class="copy-panel" aria-live="polite">
-            <p class="chapter">Chapter <span id="chapterNumber">01</span></p>
-            <h2 id="storyTitle">نفس اول</h2>
+          <header class="gift-invitation">
+            <p>Open the gift and see what experiences have been given to you.</p>
+          </header>
+
+          <div class="world" aria-hidden="true">
+            <div class="world-layer base-world"></div>
+            <div class="world-layer date-world">
+              <span class="heart heart-one"></span>
+              <span class="heart heart-two"></span>
+              <span class="heart heart-three"></span>
+              <span class="heart heart-four"></span>
+              <span class="heart heart-five"></span>
+            </div>
+            <div class="world-layer nature-world">
+              <span class="sun"></span>
+              <span class="hill hill-one"></span>
+              <span class="hill hill-two"></span>
+              <span class="hill hill-three"></span>
+              <span class="bird bird-one"></span>
+              <span class="bird bird-two"></span>
+              <span class="bird bird-three"></span>
+              <span class="leaf leaf-one"></span>
+              <span class="leaf leaf-two"></span>
+              <span class="leaf leaf-three"></span>
+            </div>
+            <div class="world-layer adventure-world">
+              <span class="wave-line wave-line-one"></span>
+              <span class="wave-line wave-line-two"></span>
+              <span class="wave-line wave-line-three"></span>
+              <span class="diver"></span>
+              <span class="fish fish-one"></span>
+              <span class="fish fish-two"></span>
+              <span class="bubble bubble-one"></span>
+              <span class="bubble bubble-two"></span>
+              <span class="bubble bubble-three"></span>
+            </div>
+            <div class="world-layer cooking-world">
+              <span class="kitchen-light"></span>
+              <span class="flour-cloud flour-one"></span>
+              <span class="flour-cloud flour-two"></span>
+              <span class="food-item food-bread"></span>
+              <span class="food-item food-croissant"></span>
+              <span class="food-item food-pasta"></span>
+              <span class="food-item food-spoon"></span>
+              <span class="food-item food-tomato"></span>
+            </div>
+          </div>
+
+          <div class="scene-copy" aria-live="polite">
+            <p class="chapter">Scene <span id="chapterNumber">00</span></p>
+            <h1 id="storyTitle">Scroll to open.</h1>
             <p id="storyText">
-              کادو هنوز بسته است، اما نورهای کوچک از لبه‌های روبان پیداست.
+              The gift is the first frame. Pull the page down and let each
+              experience change the whole room.
             </p>
           </div>
 
           <div class="gift-scene" aria-hidden="true">
-            <div class="halo halo-one"></div>
-            <div class="halo halo-two"></div>
-
-            <div class="experience-card card-a">
-              <div class="card-image image-aurora"></div>
-              <span>نورهای نرم</span>
-            </div>
-            <div class="experience-card card-b">
-              <div class="card-image image-city"></div>
-              <span>شهر بیدار</span>
-            </div>
-            <div class="experience-card card-c">
-              <div class="card-image image-ocean"></div>
-              <span>موج آرام</span>
-            </div>
-            <div class="experience-card card-d">
-              <div class="card-image image-spark"></div>
-              <span>جرقه‌ی تازه</span>
+            <div class="experience-card card-date">
+              <div class="card-media panel-date"></div>
+              <span>Date Night</span>
             </div>
 
-            <div class="gift">
-              <div class="lid">
-                <div class="bow bow-left"></div>
-                <div class="bow bow-right"></div>
-                <div class="lid-ribbon"></div>
+            <div class="experience-card card-nature">
+              <div class="card-media panel-nature"></div>
+              <span>Nature</span>
+            </div>
+
+            <div class="experience-card card-adventure">
+              <div class="card-media panel-adventure"></div>
+              <span>Adventure</span>
+              <div class="swimmer">
+                <span class="swimmer-head"></span>
+                <span class="swimmer-arm arm-one"></span>
+                <span class="swimmer-arm arm-two"></span>
+                <span class="swim-wake wake-one"></span>
+                <span class="swim-wake wake-two"></span>
               </div>
-              <div class="box">
-                <div class="box-face"></div>
-                <div class="box-ribbon vertical"></div>
-                <div class="box-ribbon horizontal"></div>
-              </div>
-              <div class="glow-core"></div>
             </div>
 
-            <canvas id="sparkles" width="900" height="900"></canvas>
+            <div class="experience-card card-cooking">
+              <div class="card-media panel-cooking"></div>
+              <span>Cooking Class</span>
+            </div>
+
+            <div class="gift real-gift" role="img" aria-label="Animated realistic luxury gift box">
+              <div class="real-gift-shadow"></div>
+              <div class="gift-glow"></div>
+              <div class="gift-frame frame-01"></div>
+              <div class="gift-frame frame-02"></div>
+              <div class="gift-frame frame-03"></div>
+              <div class="gift-frame frame-04"></div>
+              <div class="gift-frame frame-05"></div>
+              <div class="gift-frame frame-06"></div>
+              <div class="gift-frame frame-07"></div>
+              <div class="gift-frame frame-08"></div>
+              <div class="gift-frame frame-09"></div>
+              <div class="gift-frame frame-10"></div>
+              <div class="gift-frame frame-11"></div>
+              <div class="gift-frame frame-12"></div>
+            </div>
+
+            <canvas id="sparkles" width="1000" height="1000"></canvas>
           </div>
 
-          <aside class="progress-panel" aria-label="Progress">
-            <span>باز شدن</span>
+          <aside class="progress-panel" aria-label="Opening progress">
+            <span>Reveal</span>
             <div class="progress-track">
-              <div class="progress-fill" id="progressFill"></div>
+              <div class="progress-fill"></div>
             </div>
           </aside>
         </div>
       </section>
 
       <section class="finale" id="finale">
-        <div class="finale-art" aria-hidden="true">
-          <span></span>
-          <span></span>
-          <span></span>
+        <div class="finale-stage">
+          <p class="finale-note">Now you can gift beautiful memories.</p>
+
+          <div class="gift-card-certificate">
+            <p class="certificate-kicker">A gift for my dear Alex</p>
+            <h2>Experiences to Live</h2>
+            <ul>
+              <li><span>Date Night</span><time>Fri, June 12 • 8:00 PM</time></li>
+              <li><span>Nature Escape</span><time>Sat, June 20 • 9:30 AM</time></li>
+              <li><span>Ocean Dive</span><time>Sun, June 28 • 11:00 AM</time></li>
+              <li><span>Cooking Class</span><time>Thu, July 2 • 6:30 PM</time></li>
+            </ul>
+          </div>
+
+          <div class="finale-stack" aria-hidden="true">
+            <span class="finale-card panel-date"></span>
+            <span class="finale-card panel-nature"></span>
+            <span class="finale-card panel-adventure"></span>
+            <span class="finale-card panel-cooking"></span>
+          </div>
+
+          <div class="finale-copy">
+            <p>
+              A gift made of life, feeling, and moments they will carry with them.
+            </p>
+            <a class="cta" href="#story">Open Again</a>
+          </div>
         </div>
-        <p class="eyebrow">The reveal</p>
-        <h2>حالا تجربه‌ها بیرون آمده‌اند.</h2>
-        <p>
-          این فقط نسخه‌ی اول است؛ می‌شود همین حس را تبدیل کرد به سایت محصول،
-          صفحه‌ی دعوت، یا یک داستان تعاملی کامل.
-        </p>
-        <a class="cta" href="#top">دوباره باز کن</a>
       </section>
     </main>
 

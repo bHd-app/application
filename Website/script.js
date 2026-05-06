@@ -1,5 +1,6 @@
 const root = document.documentElement;
 const story = document.querySelector(".scroll-story");
+const finale = document.querySelector(".finale");
 const title = document.querySelector("#storyTitle");
 const text = document.querySelector("#storyText");
 const chapterNumber = document.querySelector("#chapterNumber");
@@ -9,41 +10,53 @@ const ctx = canvas.getContext("2d");
 const chapters = [
   {
     at: 0,
+    scene: "intro",
+    number: "00",
+    title: "Scroll down",
+    text: "",
+  },
+  {
+    at: 0.58,
+    scene: "date",
     number: "01",
-    title: "نفس اول",
-    text: "کادو هنوز بسته است، اما نورهای کوچک از لبه‌های روبان پیداست.",
+    title: "An exceptional date",
+    text: "",
   },
   {
-    at: 0.24,
+    at: 0.74,
+    scene: "nature",
     number: "02",
-    title: "اولین ترک نور",
-    text: "درِ کادو از جایش جدا می‌شود و یک گرمای طلایی از داخلش بالا می‌آید.",
+    title: "Or an experience in the heart of nature",
+    text: "",
   },
   {
-    at: 0.49,
+    at: 0.86,
+    scene: "adventure",
     number: "03",
-    title: "خاطره‌ها پرتاب می‌شوند",
-    text: "هر کارت با ریتم خودش حرکت می‌کند؛ یکی آرام، یکی تند، یکی شناور.",
+    title: "Or diving into the ocean",
+    text: "",
   },
   {
-    at: 0.73,
+    at: 0.94,
+    scene: "cooking",
     number: "04",
-    title: "همه چیز زنده است",
-    text: "حالا صحنه پر از تجربه‌هایی است که انگار از داخل کادو نفس می‌کشند.",
+    title: "Or even a cooking class",
+    text: "",
   },
 ];
 
-const particles = Array.from({ length: 120 }, (_, index) => {
-  const angle = (index / 120) * Math.PI * 2;
-  const orbit = 0.2 + Math.random() * 0.78;
+const particles = Array.from({ length: 190 }, (_, index) => {
+  const angle = (index / 190) * Math.PI * 2;
+  const orbit = 0.18 + Math.random() * 0.84;
 
   return {
     angle,
     orbit,
-    size: 1.2 + Math.random() * 3.8,
-    spin: 0.45 + Math.random() * 1.8,
-    hue: ["#f6c76f", "#f77862", "#90d3be", "#ffffff", "#3863a7"][
-      index % 5
+    size: 1.1 + Math.random() * 4.8,
+    spin: 0.38 + Math.random() * 1.9,
+    wave: Math.random() * Math.PI * 2,
+    color: ["#f3c36b", "#ff6f8f", "#89d8b7", "#ffffff", "#2368a4", "#b82956"][
+      index % 6
     ],
   };
 });
@@ -52,6 +65,7 @@ let latestProgress = 0;
 let smoothProgress = 0;
 let activeChapter = -1;
 let ticking = false;
+let animationFrame = 0;
 
 function clamp(value, min = 0, max = 1) {
   return Math.min(max, Math.max(min, value));
@@ -61,14 +75,30 @@ function easeOutCubic(value) {
   return 1 - Math.pow(1 - value, 3);
 }
 
-function easeInOut(value) {
+function easeInOutCubic(value) {
   return value < 0.5
     ? 4 * value * value * value
     : 1 - Math.pow(-2 * value + 2, 3) / 2;
 }
 
+function segment(progress, start, end) {
+  return clamp((progress - start) / (end - start));
+}
+
+function stageAmount(progress, start, peak, end) {
+  const fadeIn = segment(progress, start, peak);
+  const fadeOut = 1 - segment(progress, peak, end);
+  return easeInOutCubic(clamp(Math.min(fadeIn, fadeOut)));
+}
+
 function calculateProgress() {
   const rect = story.getBoundingClientRect();
+  const distance = rect.height - window.innerHeight;
+  return clamp(-rect.top / distance);
+}
+
+function calculateFinaleProgress() {
+  const rect = finale.getBoundingClientRect();
   const distance = rect.height - window.innerHeight;
   return clamp(-rect.top / distance);
 }
@@ -84,6 +114,7 @@ function syncChapter(progress) {
 
   activeChapter = nextIndex;
   const chapter = chapters[nextIndex];
+  root.dataset.scene = chapter.scene;
   title.textContent = chapter.title;
   text.textContent = chapter.text;
   chapterNumber.textContent = chapter.number;
@@ -97,39 +128,51 @@ function sizeCanvas() {
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
 }
 
-function drawSparkles(progress) {
+function drawSparkles(progress, mood) {
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
   const centerX = width / 2;
   const centerY = height / 2;
-  const opening = easeOutCubic(clamp((progress - 0.18) / 0.4));
-  const reveal = easeInOut(clamp((progress - 0.42) / 0.48));
+  const opening = easeOutCubic(segment(progress, 0.08, 0.34));
+  const reveal = easeInOutCubic(segment(progress, 0.12, 0.9));
 
   ctx.clearRect(0, 0, width, height);
 
   particles.forEach((particle, index) => {
-    const pulse = Math.sin(progress * 12 + index * 0.37) * 0.5 + 0.5;
-    const radius = (58 + particle.orbit * 270) * opening;
-    const drift = reveal * 95 * Math.sin(index);
-    const angle = particle.angle + progress * particle.spin;
+    const pulse = Math.sin(progress * 14 + particle.wave) * 0.5 + 0.5;
+    const radius = (44 + particle.orbit * 318) * opening;
+    const drift = reveal * 118 * Math.sin(index * 1.7);
+    const angle = particle.angle + progress * particle.spin * 2.25;
     const x = centerX + Math.cos(angle) * (radius + drift);
-    const y = centerY + Math.sin(angle) * (radius * 0.72 + drift * 0.38) - opening * 28;
-    const alpha = clamp(opening * (0.32 + pulse * 0.68) - reveal * 0.12);
+    const y =
+      centerY +
+      Math.sin(angle) * (radius * 0.7 + drift * 0.28) -
+      opening * 34 -
+      reveal * 18 * Math.cos(index);
+    const alpha = clamp(opening * (0.26 + pulse * 0.74) - reveal * 0.03);
+    const color =
+      mood.cooking > 0.5
+        ? ["#f3c36b", "#ffffff", "#ffcf9f"][index % 3]
+        : mood.adventure > 0.5
+          ? ["#ffffff", "#86d6ff", "#2368a4"][index % 3]
+          : mood.nature > 0.5
+            ? ["#ffffff", "#89d8b7", "#2d8f62"][index % 3]
+            : particle.color;
 
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.translate(x, y);
-    ctx.rotate(angle + progress * 3);
-    ctx.fillStyle = particle.hue;
-    ctx.shadowColor = particle.hue;
-    ctx.shadowBlur = 18 * alpha;
+    ctx.rotate(angle + progress * 4);
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 20 * alpha;
     ctx.beginPath();
     ctx.roundRect(
       -particle.size / 2,
       -particle.size / 2,
       particle.size,
       particle.size,
-      1
+      1.2
     );
     ctx.fill();
     ctx.restore();
@@ -137,31 +180,78 @@ function drawSparkles(progress) {
 }
 
 function render() {
-  ticking = false;
   latestProgress = calculateProgress();
-  smoothProgress += (latestProgress - smoothProgress) * 0.12;
+  const finaleProgress = easeInOutCubic(calculateFinaleProgress());
+  const finaleCard = Math.min(finaleProgress / 0.58, 1);
+  const finaleMessage = segment(finaleProgress, 0.5, 1);
+  smoothProgress += (latestProgress - smoothProgress) * 0.24;
 
-  const opening = easeOutCubic(clamp((smoothProgress - 0.16) / 0.36));
-  const reveal = easeInOut(clamp((smoothProgress - 0.38) / 0.46));
+  const release = easeInOutCubic(segment(smoothProgress, 0.04, 0.18));
+  const invitation = 1 - easeInOutCubic(segment(smoothProgress, 0.004, 0.055));
+  const giftProgress = easeInOutCubic(segment(smoothProgress, 0.03, 0.7));
+  const opening = easeOutCubic(segment(smoothProgress, 0.42, 0.7));
+  const openGift = easeInOutCubic(segment(smoothProgress, 0.54, 0.72));
+  const date = stageAmount(smoothProgress, 0.58, 0.7, 0.82);
+  const nature = stageAmount(smoothProgress, 0.74, 0.83, 0.92);
+  const adventure = stageAmount(smoothProgress, 0.86, 0.93, 0.99);
+  const cooking = easeInOutCubic(segment(smoothProgress, 0.94, 0.995));
+  const rawGiftFrame = giftProgress * 11;
+  const lowerGiftFrame = Math.floor(rawGiftFrame);
+  const upperGiftFrame = Math.min(11, lowerGiftFrame + 1);
+  const giftFrameMix = rawGiftFrame - lowerGiftFrame;
 
   root.style.setProperty("--progress", smoothProgress.toFixed(4));
+  root.style.setProperty("--finale", finaleProgress.toFixed(4));
+  root.style.setProperty("--finale-card", finaleCard.toFixed(4));
+  root.style.setProperty("--finale-message", finaleMessage.toFixed(4));
+  root.style.setProperty("--invitation", invitation.toFixed(4));
+  root.style.setProperty("--release", release.toFixed(4));
   root.style.setProperty("--opening", opening.toFixed(4));
-  root.style.setProperty("--reveal", reveal.toFixed(4));
+  root.style.setProperty("--open-gift", openGift.toFixed(4));
+  root.style.setProperty("--date", date.toFixed(4));
+  root.style.setProperty("--nature", nature.toFixed(4));
+  root.style.setProperty("--adventure", adventure.toFixed(4));
+  root.style.setProperty("--cooking", cooking.toFixed(4));
+
+  for (let index = 0; index < 12; index += 1) {
+    let opacity = 0;
+
+    if (index === lowerGiftFrame) {
+      opacity = 1 - giftFrameMix;
+    }
+
+    if (index === upperGiftFrame) {
+      opacity = Math.max(opacity, giftFrameMix);
+    }
+
+    root.style.setProperty(
+      `--gift-frame-${String(index + 1).padStart(2, "0")}`,
+      opacity.toFixed(4)
+    );
+  }
 
   syncChapter(smoothProgress);
-  drawSparkles(smoothProgress);
+  drawSparkles(smoothProgress, { date, nature, adventure, cooking });
 
   if (Math.abs(latestProgress - smoothProgress) > 0.001) {
-    requestAnimationFrame(render);
+    animationFrame = requestAnimationFrame(render);
+    return;
   }
+
+  ticking = false;
+  animationFrame = 0;
 }
 
 function requestRender() {
   if (ticking) {
     return;
   }
+
   ticking = true;
-  requestAnimationFrame(render);
+  if (animationFrame) {
+    cancelAnimationFrame(animationFrame);
+  }
+  animationFrame = requestAnimationFrame(render);
 }
 
 window.addEventListener("scroll", requestRender, { passive: true });
