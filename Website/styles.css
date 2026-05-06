@@ -23,6 +23,7 @@
   --finale-card: 0;
   --finale-message: 0;
   --invitation: 1;
+  --intro-copy: 1;
   --ink: #171316;
   --muted: rgba(23, 19, 22, 0.68);
   --wine: #5d173f;
@@ -224,9 +225,9 @@ a {
 
 .diver {
   position: absolute;
-  right: 14%;
-  top: 42%;
-  width: clamp(130px, 18vw, 260px);
+  right: 12%;
+  top: 22%;
+  width: clamp(195px, 27vw, 390px);
   aspect-ratio: 1;
   background-image: url("./assets/diver.webp");
   background-repeat: no-repeat;
@@ -235,7 +236,7 @@ a {
   opacity: var(--adventure);
   filter: drop-shadow(0 22px 24px rgba(15, 95, 148, 0.24));
   transform:
-    translate(calc((1 - var(--adventure)) * 150px), calc((1 - var(--adventure)) * 60px))
+    translate(calc((1 - var(--adventure)) * 150px), calc((1 - var(--adventure)) * 34px))
     rotate(calc(-8deg + var(--adventure) * 7deg));
 }
 
@@ -613,11 +614,11 @@ p {
   display: inline;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
-  padding: 0.02em 0.16em 0.08em;
-  border-radius: 0.24em;
-  background: rgba(255, 255, 255, 0.56);
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
   color: #8d123f;
-  font-size: clamp(1.45rem, 3.4vw, 4rem);
+  font-size: clamp(1.35rem, 3vw, 3.45rem);
   font-weight: 700;
   line-height: 0.96;
   letter-spacing: 0;
@@ -627,6 +628,17 @@ p {
     0 2px 0 rgba(255, 255, 255, 0.95),
     0 13px 26px rgba(255, 255, 255, 0.72),
     0 20px 48px rgba(56, 16, 38, 0.18);
+}
+
+html[data-scene="intro"] .scene-copy {
+  top: clamp(178px, 25vh, 230px);
+  opacity: var(--intro-copy);
+  transform: translateX(-50%) rotate(-4deg) scale(0.88);
+}
+
+html[data-scene="intro"] .scene-copy h1 {
+  color: #8d123f;
+  font-size: clamp(0.95rem, 1.85vw, 1.75rem);
 }
 
 html[data-scene="date"] .scene-copy {
@@ -640,7 +652,7 @@ html[data-scene="date"] .scene-copy {
 
 html[data-scene="date"] .scene-copy h1 {
   color: #bd114f;
-  background: rgba(255, 239, 246, 0.68);
+  background: transparent;
 }
 
 html[data-scene="nature"] .scene-copy {
@@ -655,11 +667,11 @@ html[data-scene="nature"] .scene-copy {
 
 html[data-scene="nature"] .scene-copy h1 {
   color: #12683e;
-  background: rgba(238, 255, 230, 0.72);
+  background: transparent;
 }
 
 html[data-scene="adventure"] .scene-copy {
-  top: 18%;
+  top: 12%;
   right: 8%;
   bottom: auto;
   left: auto;
@@ -669,8 +681,8 @@ html[data-scene="adventure"] .scene-copy {
 }
 
 html[data-scene="adventure"] .scene-copy h1 {
-  color: #045c99;
-  background: rgba(226, 247, 255, 0.72);
+  color: #064a82;
+  background: transparent;
 }
 
 html[data-scene="cooking"] .scene-copy {
@@ -685,7 +697,7 @@ html[data-scene="cooking"] .scene-copy {
 
 html[data-scene="cooking"] .scene-copy h1 {
   color: #934111;
-  background: rgba(255, 240, 210, 0.74);
+  background: transparent;
 }
 
 .gift-scene {
@@ -1104,49 +1116,62 @@ html[data-scene="cooking"] .scene-copy h1 {
 
 .gift-card-certificate {
   position: absolute;
-  top: 42%;
+  top: 52%;
   left: 50%;
   z-index: 5;
-  display: grid;
-  align-content: center;
-  justify-items: center;
-  width: clamp(280px, 34vw, 480px);
-  aspect-ratio: 1.5;
-  padding: clamp(34px, 4.8vw, 70px) clamp(30px, 4.5vw, 64px);
-  border-radius: 30px;
+  width: min(82vw, 780px);
+  aspect-ratio: 3 / 2;
+  padding: 0;
+  border-radius: 0;
   background-image: url("./assets/gift-card-bg.webp");
   background-repeat: no-repeat;
-  background-size: cover;
+  background-size: contain;
   background-position: center;
-  box-shadow: 0 44px 110px rgba(93, 23, 63, 0.22);
+  filter: drop-shadow(0 40px 74px rgba(93, 23, 63, 0.22));
   color: #5d173f;
   text-align: center;
   transform:
     translate(-50%, -50%)
-    scale(calc(0.78 + var(--finale-card) * 0.24));
+    scale(calc(0.82 + var(--finale-card) * 0.18));
   opacity: var(--finale-card);
   pointer-events: none;
 }
 
+.certificate-content {
+  position: absolute;
+  top: 24%;
+  right: 14%;
+  bottom: 19%;
+  left: 25%;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  overflow: hidden;
+}
+
 .certificate-kicker {
-  margin: 0 0 6px;
-  color: #b82956;
+  margin: 0 0 4px;
+  color: rgba(93, 23, 63, 0.72);
   font-family: "Quicksand", Inter, ui-sans-serif, system-ui, sans-serif;
-  font-size: clamp(0.78rem, 1.2vw, 1.05rem);
-  font-weight: 700;
+  font-size: clamp(0.76rem, 1.1vw, 1rem);
+  font-weight: 800;
+  line-height: 1.1;
 }
 
 .gift-card-certificate h2 {
-  margin: 0 0 10px;
+  margin: 0 0 clamp(10px, 1.3vw, 18px);
   color: #5d173f;
-  font-family: "Quicksand", Inter, ui-sans-serif, system-ui, sans-serif;
-  font-size: clamp(1.45rem, 3vw, 3.3rem);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(1.55rem, 3.2vw, 3.05rem);
+  font-weight: 800;
   line-height: 0.94;
+  text-wrap: balance;
 }
 
 .gift-card-certificate ul {
   display: grid;
-  gap: 6px;
+  width: min(100%, 520px);
+  gap: clamp(3px, 0.45vw, 7px);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1156,52 +1181,58 @@ html[data-scene="cooking"] .scene-copy h1 {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 14px;
+  gap: 16px;
   border-bottom: 1px solid rgba(184, 41, 86, 0.18);
-  padding: 5px 0;
+  padding: clamp(4px, 0.55vw, 8px) 0;
   color: rgba(93, 23, 63, 0.82);
   font-weight: 800;
   text-align: left;
 }
 
 .gift-card-certificate li span {
-  font-size: clamp(0.76rem, 1.05vw, 0.98rem);
+  font-size: clamp(0.74rem, 1.15vw, 1.05rem);
 }
 
 .gift-card-certificate time {
   color: rgba(93, 23, 63, 0.58);
-  font-size: clamp(0.65rem, 0.82vw, 0.8rem);
+  font-size: clamp(0.62rem, 0.95vw, 0.88rem);
   font-weight: 700;
   white-space: nowrap;
 }
 
 .finale-copy {
-  position: relative;
+  position: absolute;
+  left: 50%;
+  bottom: clamp(26px, 5vh, 58px);
   z-index: 6;
   display: grid;
   justify-items: center;
-  margin-top: min(44vh, 380px);
   opacity: var(--finale-message);
-  transform: translateY(calc((1 - var(--finale-message)) * 28px));
+  transform: translate(-50%, calc((1 - var(--finale-message)) * 28px));
 }
 
 .finale-note {
   position: absolute;
-  top: clamp(68px, 10vh, 112px);
+  top: clamp(42px, 7vh, 80px);
+  left: 50%;
   z-index: 7;
+  width: min(90vw, 760px);
   margin: 0;
   color: #8d123f;
   font-family: "Quicksand", Inter, ui-sans-serif, system-ui, sans-serif;
-  font-size: clamp(1.15rem, 2.4vw, 2.5rem);
+  font-size: clamp(0.98rem, 1.85vw, 1.72rem);
   font-weight: 700;
+  line-height: 1.08;
   opacity: var(--finale-message);
-  transform: translateY(calc((1 - var(--finale-message)) * 18px)) rotate(-2deg);
+  transform:
+    translate(-50%, calc((1 - var(--finale-message)) * 18px))
+    rotate(-2deg);
   text-shadow:
     0 2px 0 rgba(255, 255, 255, 0.9),
     0 18px 35px rgba(255, 255, 255, 0.72);
 }
 
-.finale h2 {
+.finale-copy h2 {
   max-width: 780px;
   margin-bottom: 18px;
   color: var(--wine);
@@ -1209,7 +1240,7 @@ html[data-scene="cooking"] .scene-copy h1 {
   line-height: 0.98;
 }
 
-.finale p:not(.eyebrow) {
+.finale-copy p:not(.eyebrow) {
   max-width: 640px;
   color: var(--muted);
   font-size: clamp(1rem, 1.55vw, 1.22rem);
@@ -1217,7 +1248,7 @@ html[data-scene="cooking"] .scene-copy h1 {
 }
 
 .cta {
-  margin-top: 20px;
+  margin-top: 0;
   color: white;
   background: linear-gradient(135deg, var(--wine), var(--berry));
 }
@@ -1349,22 +1380,27 @@ html[data-scene="cooking"] .scene-copy h1 {
   }
 
   .finale-copy {
-    margin-top: min(46vh, 340px);
+    bottom: 22px;
   }
 
   .gift-card-certificate {
-    width: min(92vw, 430px);
-    padding: 44px 34px;
+    width: min(94vw, 620px);
+    padding: 0;
+  }
+
+  .certificate-content {
+    top: 24%;
+    right: 11%;
+    bottom: 17%;
+    left: 23%;
   }
 
   .gift-card-certificate li {
-    display: grid;
-    justify-items: start;
-    gap: 2px;
+    gap: 8px;
   }
 
   .gift-card-certificate time {
-    white-space: normal;
+    white-space: nowrap;
   }
 }
 

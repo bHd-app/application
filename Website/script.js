@@ -188,6 +188,7 @@ function render() {
 
   const release = easeInOutCubic(segment(smoothProgress, 0.04, 0.18));
   const invitation = 1 - easeInOutCubic(segment(smoothProgress, 0.004, 0.055));
+  const introCopy = 1 - easeInOutCubic(segment(smoothProgress, 0.006, 0.07));
   const giftProgress = easeInOutCubic(segment(smoothProgress, 0.03, 0.7));
   const opening = easeOutCubic(segment(smoothProgress, 0.42, 0.7));
   const openGift = easeInOutCubic(segment(smoothProgress, 0.54, 0.72));
@@ -205,6 +206,7 @@ function render() {
   root.style.setProperty("--finale-card", finaleCard.toFixed(4));
   root.style.setProperty("--finale-message", finaleMessage.toFixed(4));
   root.style.setProperty("--invitation", invitation.toFixed(4));
+  root.style.setProperty("--intro-copy", introCopy.toFixed(4));
   root.style.setProperty("--release", release.toFixed(4));
   root.style.setProperty("--opening", opening.toFixed(4));
   root.style.setProperty("--open-gift", openGift.toFixed(4));
