@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Quicksand:wght@600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Playfair+Display:wght@700;800&family=Quicksand:wght@600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
@@ -115,21 +115,17 @@
               <span>Cooking Class</span>
             </div>
 
-            <div class="gift real-gift" role="img" aria-label="Animated realistic luxury gift box">
+            <div class="gift real-gift" role="img" aria-label="Scroll-controlled cinematic gift opening video">
               <div class="real-gift-shadow"></div>
               <div class="gift-glow"></div>
-              <div class="gift-frame frame-01"></div>
-              <div class="gift-frame frame-02"></div>
-              <div class="gift-frame frame-03"></div>
-              <div class="gift-frame frame-04"></div>
-              <div class="gift-frame frame-05"></div>
-              <div class="gift-frame frame-06"></div>
-              <div class="gift-frame frame-07"></div>
-              <div class="gift-frame frame-08"></div>
-              <div class="gift-frame frame-09"></div>
-              <div class="gift-frame frame-10"></div>
-              <div class="gift-frame frame-11"></div>
-              <div class="gift-frame frame-12"></div>
+              <video
+                class="gift-video"
+                id="giftOpeningVideo"
+                src="./assets/gift-opening.mp4"
+                preload="auto"
+                muted
+                playsinline
+              ></video>
             </div>
 
             <canvas id="sparkles" width="1000" height="1000"></canvas>

@@ -1,8 +1,8 @@
 # Gift Journey Website
 
 A standalone static prototype for a cinematic scroll-driven gift reveal. The
-gift opens as the page scrolls, then date night, nature, adventure, and cooking
-class moments escape from the box.
+gift opening is a real scroll-scrubbed MP4 video, then date night, nature,
+adventure, and cooking class moments escape from the box.
 
 ## Run Locally
 
@@ -24,5 +24,4 @@ http://127.0.0.1:5173
   adventure scene.
 - `assets/food-sprite.webp`: generated transparent food sprite for the cooking
   class scene.
-- `assets/gift-box-12-frame.webp`: generated transparent twelve-frame gift box
-  sprite used for the slow ribbon and lid opening animation.
+- `assets/gift-opening.mp4`: scroll-scrubbed gift box opening video.

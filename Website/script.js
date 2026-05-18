@@ -6,6 +6,7 @@ const text = document.querySelector("#storyText");
 const chapterNumber = document.querySelector("#chapterNumber");
 const canvas = document.querySelector("#sparkles");
 const ctx = canvas.getContext("2d");
+const giftOpeningVideo = document.querySelector("#giftOpeningVideo");
 
 const chapters = [
   {
@@ -66,6 +67,8 @@ let smoothProgress = 0;
 let activeChapter = -1;
 let ticking = false;
 let animationFrame = 0;
+let currentGiftProgress = 0;
+let giftVideoPauseTimer = 0;
 
 function clamp(value, min = 0, max = 1) {
   return Math.min(max, Math.max(min, value));
@@ -179,6 +182,49 @@ function drawSparkles(progress, mood) {
   });
 }
 
+function syncGiftOpeningVideo(progress, options = {}) {
+  currentGiftProgress = clamp(progress);
+
+  if (!giftOpeningVideo.duration || Number.isNaN(giftOpeningVideo.duration)) {
+    return;
+  }
+
+  const targetTime = clamp(progress) * Math.max(giftOpeningVideo.duration - 0.05, 0);
+  const drift = Math.abs(giftOpeningVideo.currentTime - targetTime);
+  const shouldPinFrame =
+    options.force ||
+    giftOpeningVideo.paused ||
+    currentGiftProgress <= 0.01 ||
+    currentGiftProgress >= 0.99 ||
+    drift > 0.28;
+
+  if (shouldPinFrame) {
+    giftOpeningVideo.currentTime = targetTime;
+  }
+}
+
+function playGiftOpeningVideoWhileScrolling() {
+  if (!giftOpeningVideo.duration || Number.isNaN(giftOpeningVideo.duration)) {
+    return;
+  }
+
+  if (currentGiftProgress > 0.01 && currentGiftProgress < 0.99) {
+    const playPromise = giftOpeningVideo.play();
+
+    if (playPromise) {
+      playPromise.catch(() => {
+        syncGiftOpeningVideo(currentGiftProgress, { force: true });
+      });
+    }
+  }
+
+  window.clearTimeout(giftVideoPauseTimer);
+  giftVideoPauseTimer = window.setTimeout(() => {
+    giftOpeningVideo.pause();
+    syncGiftOpeningVideo(currentGiftProgress, { force: true });
+  }, 180);
+}
+
 function render() {
   latestProgress = calculateProgress();
   const finaleProgress = easeInOutCubic(calculateFinaleProgress());
@@ -196,10 +242,6 @@ function render() {
   const nature = stageAmount(smoothProgress, 0.74, 0.83, 0.92);
   const adventure = stageAmount(smoothProgress, 0.86, 0.93, 0.99);
   const cooking = easeInOutCubic(segment(smoothProgress, 0.94, 0.995));
-  const rawGiftFrame = giftProgress * 11;
-  const lowerGiftFrame = Math.floor(rawGiftFrame);
-  const upperGiftFrame = Math.min(11, lowerGiftFrame + 1);
-  const giftFrameMix = rawGiftFrame - lowerGiftFrame;
 
   root.style.setProperty("--progress", smoothProgress.toFixed(4));
   root.style.setProperty("--finale", finaleProgress.toFixed(4));
@@ -215,24 +257,8 @@ function render() {
   root.style.setProperty("--adventure", adventure.toFixed(4));
   root.style.setProperty("--cooking", cooking.toFixed(4));
 
-  for (let index = 0; index < 12; index += 1) {
-    let opacity = 0;
-
-    if (index === lowerGiftFrame) {
-      opacity = 1 - giftFrameMix;
-    }
-
-    if (index === upperGiftFrame) {
-      opacity = Math.max(opacity, giftFrameMix);
-    }
-
-    root.style.setProperty(
-      `--gift-frame-${String(index + 1).padStart(2, "0")}`,
-      opacity.toFixed(4)
-    );
-  }
-
   syncChapter(smoothProgress);
+  syncGiftOpeningVideo(giftProgress);
   drawSparkles(smoothProgress, { date, nature, adventure, cooking });
 
   if (Math.abs(latestProgress - smoothProgress) > 0.001) {
@@ -256,9 +282,26 @@ function requestRender() {
   animationFrame = requestAnimationFrame(render);
 }
 
-window.addEventListener("scroll", requestRender, { passive: true });
+window.addEventListener(
+  "scroll",
+  () => {
+    const immediateProgress = calculateProgress();
+    const immediateGiftProgress = easeInOutCubic(segment(immediateProgress, 0.03, 0.7));
+
+    syncGiftOpeningVideo(immediateGiftProgress);
+    playGiftOpeningVideoWhileScrolling();
+    requestRender();
+  },
+  { passive: true }
+);
 window.addEventListener("resize", () => {
   sizeCanvas();
+  requestRender();
+});
+
+giftOpeningVideo.addEventListener("loadedmetadata", () => {
+  giftOpeningVideo.pause();
+  syncGiftOpeningVideo(0);
   requestRender();
 });
 
