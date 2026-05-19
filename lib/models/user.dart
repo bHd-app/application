@@ -8,6 +8,7 @@ class GiftCategory {
     required this.subtitle,
     required this.icon,
     required this.color,
+    required this.imageAsset,
     required this.subcategories,
   });
 
@@ -22,6 +23,9 @@ class GiftCategory {
 
   /// Accent color used for the category across the UI.
   final Color color;
+
+  /// Generated category image shown in the category grid.
+  final String imageAsset;
 
   /// Selectable child groups that belong to this category.
   final List<GiftSubcategory> subcategories;

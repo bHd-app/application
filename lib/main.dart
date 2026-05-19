@@ -38,13 +38,88 @@ class _GiftNestAppState extends State<GiftNestApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Gift love',
+      title: 'Expergift',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
         scaffoldBackgroundColor: cream,
-        colorScheme: ColorScheme.fromSeed(seedColor: coral),
+        colorScheme: const ColorScheme.light(
+          primary: ink,
+          onPrimary: Colors.white,
+          secondary: coral,
+          onSecondary: Colors.white,
+          tertiary: mint,
+          surface: paper,
+          onSurface: ink,
+          error: Color(0xFFE5484D),
+        ),
+        appBarTheme: const AppBarTheme(backgroundColor: cream),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            backgroundColor: ink,
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: line,
+            disabledForegroundColor: mutedInk,
+            minimumSize: const Size(64, 52),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            textStyle: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: ink,
+            side: const BorderSide(color: line),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            textStyle: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+        chipTheme: ChipThemeData(
+          backgroundColor: paper,
+          selectedColor: ink,
+          checkmarkColor: Colors.white,
+          labelStyle: const TextStyle(color: ink, fontWeight: FontWeight.w700),
+          secondaryLabelStyle: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+          ),
+          side: const BorderSide(color: line),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: const Color(0xFFF9FAFB),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: line),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: line),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: ink, width: 1.4),
+          ),
+          labelStyle: const TextStyle(color: mutedInk),
+          prefixIconColor: mutedInk,
+        ),
+        snackBarTheme: SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: ink,
+          contentTextStyle: const TextStyle(color: Colors.white),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
         textTheme: Theme.of(
           context,
         ).textTheme.apply(bodyColor: ink, displayColor: ink),

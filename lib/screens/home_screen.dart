@@ -5,84 +5,337 @@ import '../services/api_service.dart';
 import '../utils/helpers.dart';
 import '../widgets/custom_button.dart';
 
-/// First screen that lets users choose how to start planning a gift.
-class StartPage extends StatelessWidget {
+/// First screen shell that owns the four main app tabs.
+class StartPage extends StatefulWidget {
   /// Creates the app start page.
-  const StartPage({super.key, required this.controller});
+  const StartPage({super.key, required this.controller, this.initialTab = 0});
+
+  /// Shared gift plan controller.
+  final GiftPlanController controller;
+
+  /// Tab selected when the shell opens.
+  final int initialTab;
+
+  @override
+  State<StartPage> createState() => _StartPageState();
+}
+
+class _StartPageState extends State<StartPage> {
+  late int selectedTab = widget.initialTab.clamp(0, 3);
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: widget.controller,
+      builder: (context, _) {
+        return Scaffold(
+          body: IndexedStack(
+            index: selectedTab,
+            children: [
+              _HomeTab(
+                controller: widget.controller,
+                onChooseCategories: () => setState(() => selectedTab = 1),
+              ),
+              ExperienceCategoriesTab(controller: widget.controller),
+              SelectedExperiencesTab(controller: widget.controller),
+              ProfileTab(controller: widget.controller),
+            ],
+          ),
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: selectedTab,
+            onDestinationSelected: (index) =>
+                setState(() => selectedTab = index),
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home_rounded),
+                label: 'Home',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.category_outlined),
+                selectedIcon: Icon(Icons.category_rounded),
+                label: 'Categories',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.fact_check_outlined),
+                selectedIcon: Icon(Icons.fact_check_rounded),
+                label: 'Selected',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.person_outline),
+                selectedIcon: Icon(Icons.person_rounded),
+                label: 'Profile',
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _HomeTab extends StatelessWidget {
+  const _HomeTab({required this.controller, required this.onChooseCategories});
+
+  final GiftPlanController controller;
+  final VoidCallback onChooseCategories;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        const _StartBackdrop(),
+        SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const BrandHeader(onDark: true),
+                const SizedBox(height: 18),
+                const ExperienceLoopHero(),
+                const SizedBox(height: 18),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: panelDecoration(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Choose the experience you want to gift.',
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              height: 1.06,
+                            ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Curate a full day, start from a polished package, or return to a saved card.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: mutedInk,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                StartActionCard(
+                  number: '1',
+                  title: 'See ready experiences',
+                  description: 'Choose a pre-planned day and edit it after.',
+                  icon: Icons.auto_awesome_rounded,
+                  color: gold,
+                  onTap: () =>
+                      push(context, ReadyPackagesPage(controller: controller)),
+                ),
+                const SizedBox(height: 12),
+                StartActionCard(
+                  number: '2',
+                  title: 'Build it myself',
+                  description: 'Choose Food, Sports, Travel, and time slots.',
+                  icon: Icons.tune_rounded,
+                  color: coral,
+                  onTap: onChooseCategories,
+                ),
+                const SizedBox(height: 12),
+                StartActionCard(
+                  number: '3',
+                  title: 'View my gift card',
+                  description: '${controller.savedCards.length} saved cards.',
+                  icon: Icons.credit_card_rounded,
+                  color: violet,
+                  onTap: () =>
+                      push(context, GiftCardsPage(controller: controller)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StartBackdrop extends StatelessWidget {
+  const _StartBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return const DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF111827), Color(0xFF263B57), cream],
+          stops: [0, 0.3, 0.3],
+        ),
+      ),
+      child: SizedBox.expand(),
+    );
+  }
+}
+
+/// Tab that shows the current selected itinerary.
+class SelectedExperiencesTab extends StatelessWidget {
+  /// Creates the selected experiences tab.
+  const SelectedExperiencesTab({super.key, required this.controller});
 
   /// Shared gift plan controller.
   final GiftPlanController controller;
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, _) {
-        return Scaffold(
-          body: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF062B8F),
-                  Color(0xFFB72BFF),
-                  Color(0xFFFF4FA3),
-                ],
-              ),
-            ),
-            child: SafeArea(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(22, 22, 22, 28),
-                children: [
-                  const BrandHeader(onDark: true),
-                  const SizedBox(height: 34),
-                  Text(
-                    'Choose the experience you want to gift.',
-                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      height: 1.02,
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-                  StartActionCard(
-                    number: '1',
-                    title: 'See ready experiences',
-                    description: 'Choose a pre-planned day and edit it after.',
-                    icon: Icons.auto_awesome,
-                    color: gold,
-                    onTap: () => push(
-                      context,
-                      ReadyPackagesPage(controller: controller),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  StartActionCard(
-                    number: '2',
-                    title: 'Build it myself',
-                    description: 'Choose Food, Sports, Travel, and time slots.',
-                    icon: Icons.tune,
-                    color: coral,
-                    onTap: () =>
-                        push(context, BuilderMenuPage(controller: controller)),
-                  ),
-                  const SizedBox(height: 14),
-                  StartActionCard(
-                    number: '3',
-                    title: 'View my gift card',
-                    description: '${controller.savedCards.length} saved cards.',
-                    icon: Icons.credit_card,
-                    color: violet,
-                    onTap: () =>
-                        push(context, GiftCardsPage(controller: controller)),
-                  ),
-                ],
-              ),
-            ),
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+        children: [
+          Text(
+            'Selected experiences',
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
           ),
-        );
-      },
+          const SizedBox(height: 14),
+          CostPulse(controller: controller),
+          const SizedBox(height: 18),
+          DayTimeline(gifts: controller.gifts, onRemove: controller.removeGift),
+          const SizedBox(height: 18),
+          FilledButton.icon(
+            onPressed: controller.gifts.isEmpty
+                ? null
+                : () => push(context, CardSetupPage(controller: controller)),
+            icon: const Icon(Icons.arrow_forward_rounded),
+            label: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tab for profile and card personalization.
+class ProfileTab extends StatelessWidget {
+  /// Creates the profile tab.
+  const ProfileTab({super.key, required this.controller});
+
+  /// Shared gift plan controller.
+  final GiftPlanController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+        children: [
+          Text(
+            'Profile',
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 14),
+          ProfileSummaryPanel(controller: controller),
+          const SizedBox(height: 16),
+          StartActionCard(
+            number: '${controller.savedCards.length}',
+            title: 'Saved gift cards',
+            description: 'Drafts and purchased gift cards live here.',
+            icon: Icons.wallet_giftcard_rounded,
+            color: violet,
+            onTap: () => push(context, GiftCardsPage(controller: controller)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tab that lists all gift categories.
+class ExperienceCategoriesTab extends StatelessWidget {
+  /// Creates the category chooser tab.
+  const ExperienceCategoriesTab({super.key, required this.controller});
+
+  /// Shared gift plan controller.
+  final GiftPlanController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExperienceCategoriesView(controller: controller);
+  }
+}
+
+/// Full category chooser used by the tab and standalone routes.
+class ExperienceCategoriesView extends StatelessWidget {
+  /// Creates the category chooser.
+  const ExperienceCategoriesView({super.key, required this.controller});
+
+  /// Shared gift plan controller.
+  final GiftPlanController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final categories = controller.apiService.getCategories();
+
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+        children: [
+          Text(
+            'Choose experience',
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Pick a category, choose the exact experience, and it will return here after adding.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: mutedInk, height: 1.35),
+          ),
+          const SizedBox(height: 18),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: categories.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 0.98,
+            ),
+            itemBuilder: (context, index) {
+              final category = categories[index];
+              return CategoryButton(
+                category: category,
+                onTap: () => push(
+                  context,
+                  CategoryPage(controller: controller, category: category),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Standalone route for choosing an experience category.
+class ExperienceCategoriesPage extends StatelessWidget {
+  /// Creates the standalone category chooser page.
+  const ExperienceCategoriesPage({super.key, required this.controller});
+
+  /// Shared gift plan controller.
+  final GiftPlanController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: appBar(context, 'Choose experience'),
+      body: ExperienceCategoriesView(controller: controller),
     );
   }
 }
@@ -101,10 +354,15 @@ class ReadyPackagesPage extends StatelessWidget {
 
     return Scaffold(
       appBar: appBar(context, 'Ready packages'),
-      body: ListView.separated(
+      body: GridView.builder(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 0.82,
+        ),
         itemCount: packages.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 16),
         itemBuilder: (context, index) {
           final package = packages[index];
           return ReadyPackageCard(
@@ -196,7 +454,8 @@ class ReadyPackageDetailPage extends StatelessWidget {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => BuilderMenuPage(controller: controller),
+                  builder: (_) =>
+                      StartPage(controller: controller, initialTab: 2),
                 ),
               );
             },
@@ -225,8 +484,6 @@ class BuilderMenuPage extends StatefulWidget {
 }
 
 class _BuilderMenuPageState extends State<BuilderMenuPage> {
-  bool showExperiencePicker = false;
-
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -235,7 +492,7 @@ class _BuilderMenuPageState extends State<BuilderMenuPage> {
         return Scaffold(
           appBar: appBar(context, 'Build your gift'),
           body: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 120),
             children: [
               GiftSetupPanel(controller: widget.controller),
               const SizedBox(height: 18),
@@ -244,16 +501,19 @@ class _BuilderMenuPageState extends State<BuilderMenuPage> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => setState(
-                    () => showExperiencePicker = !showExperiencePicker,
+                  onPressed: () => push(
+                    context,
+                    ExperienceCategoriesPage(controller: widget.controller),
                   ),
-                  icon: Icon(
-                    showExperiencePicker ? Icons.expand_less : Icons.apps,
-                  ),
+                  icon: const Icon(Icons.apps_rounded),
                   label: const Text('Choose experience'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: ink,
-                    foregroundColor: Colors.white,
+                    backgroundColor: paper,
+                    foregroundColor: ink,
+                    side: const BorderSide(color: line),
+                    elevation: 0,
+                    shadowColor: Colors.transparent,
+                    disabledBackgroundColor: line,
                     textStyle: Theme.of(context).textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.w900),
                     padding: const EdgeInsets.symmetric(vertical: 19),
@@ -262,18 +522,6 @@ class _BuilderMenuPageState extends State<BuilderMenuPage> {
                     ),
                   ),
                 ),
-              ),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 320),
-                curve: Curves.easeOutCubic,
-                child: showExperiencePicker
-                    ? Padding(
-                        padding: const EdgeInsets.only(top: 14),
-                        child: InlineExperiencePicker(
-                          controller: widget.controller,
-                        ),
-                      )
-                    : const SizedBox.shrink(),
               ),
               const SizedBox(height: 26),
               DayTimeline(
@@ -310,19 +558,18 @@ class _InlineExperiencePickerState extends State<InlineExperiencePicker> {
     final categories = widget.controller.apiService.getCategories();
 
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(26),
-        gradient: const LinearGradient(
-          colors: [Color(0xFFEAF2FF), Color(0xFFFFE6F4)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: Border.all(color: Colors.white),
-      ),
+      padding: const EdgeInsets.all(16),
+      decoration: panelDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            'Experience type',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 12),
           LayoutBuilder(
             builder: (context, constraints) {
               final count = constraints.maxWidth > 430 ? 4 : 3;
@@ -334,7 +581,7 @@ class _InlineExperiencePickerState extends State<InlineExperiencePicker> {
                   crossAxisCount: count,
                   crossAxisSpacing: 9,
                   mainAxisSpacing: 9,
-                  childAspectRatio: 0.98,
+                  childAspectRatio: 1.04,
                 ),
                 itemBuilder: (context, index) {
                   final category = categories[index];
@@ -439,33 +686,36 @@ class _CategoryPageState extends State<CategoryPage> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: widget.category.color,
-              borderRadius: BorderRadius.circular(24),
+              color: widget.category.color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: widget.category.color.withValues(alpha: 0.22),
+              ),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(widget.category.icon, color: Colors.white, size: 42),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.category.name,
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w900,
-                            ),
-                      ),
-                      Text(
-                        widget.category.subtitle,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.78),
-                        ),
-                      ),
-                    ],
+                SizedBox(
+                  height: 92,
+                  child: CategoryArtwork(
+                    icon: widget.category.icon,
+                    color: widget.category.color,
+                    imageAsset: widget.category.imageAsset,
                   ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  widget.category.name,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  widget.category.subtitle,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: mutedInk),
                 ),
               ],
             ),
@@ -504,6 +754,103 @@ class _CategoryPageState extends State<CategoryPage> {
               subcategory: subcategory,
               place: place,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Screen that shows the generated card preview and final itinerary.
+class CardSetupPage extends StatefulWidget {
+  /// Creates the card personalization page.
+  const CardSetupPage({super.key, required this.controller});
+
+  /// Shared gift plan controller.
+  final GiftPlanController controller;
+
+  @override
+  State<CardSetupPage> createState() => _CardSetupPageState();
+}
+
+class _CardSetupPageState extends State<CardSetupPage> {
+  late final TextEditingController recipientController;
+  late final TextEditingController noteController;
+
+  @override
+  void initState() {
+    super.initState();
+    recipientController = TextEditingController(
+      text: widget.controller.recipient,
+    );
+    noteController = TextEditingController(text: widget.controller.note);
+  }
+
+  @override
+  void dispose() {
+    recipientController.dispose();
+    noteController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: appBar(context, 'Card details'),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        children: [
+          Text(
+            'Who is this gift for?',
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Add the recipient name and the message that should appear on the generated card.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: mutedInk, height: 1.35),
+          ),
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: panelDecoration(),
+            child: Column(
+              children: [
+                TextField(
+                  controller: recipientController,
+                  onChanged: widget.controller.updateRecipient,
+                  decoration: const InputDecoration(
+                    labelText: 'Recipient name',
+                    prefixIcon: Icon(Icons.person_rounded),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: noteController,
+                  onChanged: widget.controller.updateNote,
+                  minLines: 3,
+                  maxLines: 5,
+                  decoration: const InputDecoration(
+                    labelText: 'Message on card',
+                    prefixIcon: Icon(Icons.notes_rounded),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          DayTimeline(gifts: widget.controller.gifts),
+          const SizedBox(height: 18),
+          FilledButton.icon(
+            onPressed: () =>
+                push(context, GeneratedCardPage(controller: widget.controller)),
+            icon: const Icon(Icons.auto_awesome_rounded),
+            label: const Text('Generate card'),
           ),
         ],
       ),
@@ -709,13 +1056,14 @@ class GenerateBar extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: ink,
-          borderRadius: BorderRadius.circular(22),
+          color: paper,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: line),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.16),
-              blurRadius: 18,
-              offset: const Offset(0, 10),
+              color: ink.withValues(alpha: 0.12),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
             ),
           ],
         ),
@@ -729,13 +1077,14 @@ class GenerateBar extends StatelessWidget {
                   Text(
                     '${controller.gifts.length} stops',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.68),
+                      color: mutedInk,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   Text(
                     '\$${controller.total}',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
+                      color: ink,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -752,8 +1101,8 @@ class GenerateBar extends StatelessWidget {
               icon: const Icon(Icons.credit_card),
               label: const Text('Generate card'),
               style: FilledButton.styleFrom(
-                backgroundColor: gold,
-                foregroundColor: ink,
+                backgroundColor: ink,
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 14,

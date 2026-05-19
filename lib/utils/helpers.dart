@@ -1,19 +1,34 @@
 import 'package:flutter/material.dart';
 
 /// Primary near-black brand color.
-const ink = Color(0xFF161214);
+const ink = Color(0xFF111827);
 
-/// Warm app background color.
-const cream = Color(0xFFFFF5EA);
+/// App background color.
+const cream = Color(0xFFF6F7FB);
+
+/// Elevated card surface color.
+const paper = Color(0xFFFFFFFF);
+
+/// Muted body text color.
+const mutedInk = Color(0xFF667085);
+
+/// Hairline border color for cards and inputs.
+const line = Color(0xFFE4E7EC);
 
 /// Primary call-to-action accent color.
-const coral = Color(0xFFFF5A4F);
+const coral = Color(0xFFF15A46);
 
 /// Secondary warm accent color.
-const gold = Color(0xFFFFC05A);
+const gold = Color(0xFFF2B94B);
 
 /// Secondary cool accent color.
-const violet = Color(0xFF7C5CFF);
+const violet = Color(0xFF6F5EF7);
+
+/// Calm green accent used for positive and premium surfaces.
+const mint = Color(0xFF0E9F6E);
+
+/// Clear blue accent used for informational highlights.
+const sky = Color(0xFF2F80ED);
 
 /// Builds the standard app bar used by secondary screens.
 AppBar appBar(BuildContext context, String title) {
@@ -21,21 +36,27 @@ AppBar appBar(BuildContext context, String title) {
     title: Text(title),
     centerTitle: false,
     backgroundColor: cream,
-    surfaceTintColor: cream,
+    surfaceTintColor: Colors.transparent,
+    elevation: 0,
+    scrolledUnderElevation: 0,
+    titleTextStyle: Theme.of(
+      context,
+    ).textTheme.titleLarge?.copyWith(color: ink, fontWeight: FontWeight.w900),
+    iconTheme: const IconThemeData(color: ink),
   );
 }
 
 /// Builds the shared white panel decoration used by cards and sections.
 BoxDecoration panelDecoration() {
   return BoxDecoration(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(22),
-    border: Border.all(color: const Color(0xFFE9D9CA)),
+    color: paper,
+    borderRadius: BorderRadius.circular(20),
+    border: Border.all(color: line),
     boxShadow: [
       BoxShadow(
-        color: Colors.black.withValues(alpha: 0.04),
-        blurRadius: 16,
-        offset: const Offset(0, 8),
+        color: ink.withValues(alpha: 0.06),
+        blurRadius: 24,
+        offset: const Offset(0, 12),
       ),
     ],
   );

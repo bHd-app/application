@@ -249,6 +249,7 @@ const categories = [
     subtitle: 'Restaurants, cafes, desserts',
     icon: Icons.restaurant,
     color: Color(0xFFFF5A4F),
+    imageAsset: 'assets/category_images/food.jpg',
     subcategories: [
       GiftSubcategory(
         name: 'Restaurant',
@@ -321,6 +322,7 @@ const categories = [
     subtitle: 'Football, basketball, action',
     icon: Icons.sports_soccer,
     color: Color(0xFF19A86B),
+    imageAsset: 'assets/category_images/sports.jpg',
     subcategories: [
       GiftSubcategory(
         name: 'Football',
@@ -360,6 +362,7 @@ const categories = [
     subtitle: 'Hotels, tours, city escapes',
     icon: Icons.flight_takeoff,
     color: Color(0xFF3478F6),
+    imageAsset: 'assets/category_images/travel.jpg',
     subcategories: [
       GiftSubcategory(
         name: 'Hotel',
@@ -399,6 +402,7 @@ const categories = [
     subtitle: 'Spa, yoga, calm hours',
     icon: Icons.spa,
     color: Color(0xFF9B5DE5),
+    imageAsset: 'assets/category_images/wellness.jpg',
     subcategories: [
       GiftSubcategory(
         name: 'Spa',
@@ -438,6 +442,7 @@ const categories = [
     subtitle: 'Concerts, jazz, live nights',
     icon: Icons.music_note,
     color: Color(0xFFFF9F1C),
+    imageAsset: 'assets/category_images/music.jpg',
     subcategories: [
       GiftSubcategory(
         name: 'Concert',
@@ -470,6 +475,7 @@ const categories = [
     subtitle: 'Kayak, hike, fresh air',
     icon: Icons.terrain,
     color: Color(0xFF00A6A6),
+    imageAsset: 'assets/category_images/outdoor.jpg',
     subcategories: [
       GiftSubcategory(
         name: 'Kayak',
@@ -502,6 +508,7 @@ const categories = [
     subtitle: 'Galleries, classes, making',
     icon: Icons.palette,
     color: Color(0xFFE94F8A),
+    imageAsset: 'assets/category_images/art.jpg',
     subcategories: [
       GiftSubcategory(
         name: 'Workshop',
@@ -534,6 +541,7 @@ const categories = [
     subtitle: 'Cinema, private screens',
     icon: Icons.movie,
     color: Color(0xFF6247AA),
+    imageAsset: 'assets/category_images/movies.jpg',
     subcategories: [
       GiftSubcategory(
         name: 'Cinema',
@@ -566,6 +574,7 @@ const categories = [
     subtitle: 'Cooking, photo, skills',
     icon: Icons.school,
     color: Color(0xFF4D9078),
+    imageAsset: 'assets/category_images/learning.jpg',
     subcategories: [
       GiftSubcategory(
         name: 'Cooking',
@@ -598,6 +607,7 @@ const categories = [
     subtitle: 'Style, books, local stores',
     icon: Icons.local_mall,
     color: Color(0xFFB86F32),
+    imageAsset: 'assets/category_images/shopping.jpg',
     subcategories: [
       GiftSubcategory(
         name: 'Fashion',
