@@ -173,27 +173,58 @@ setInterval(() => {
   spawnShootingStar(pick);
 }, 2000);
 
-/* ---------- journey video: scrub on scroll ---------- */
+/* ---------- journey video: scrub on scroll (desktop) / autoplay loop (touch) ---------- */
 const journey = document.querySelector(".journey");
 const stage = document.querySelector(".stage");
 const journeyVideo = document.getElementById("journeyVideo");
+
+// Touch/mobile browsers (esp. iOS Safari) don't reliably render frames via
+// currentTime scrubbing. Detect them and fall back to autoplay+loop so the
+// video is always visible, while scene labels still respond to scroll.
+const isTouchDevice =
+  (window.matchMedia &&
+    window.matchMedia("(hover: none) and (pointer: coarse)").matches) ||
+  /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent || "");
 
 let videoReady = false;
 let videoDuration = 0;
 
 if (journeyVideo) {
-  journeyVideo.addEventListener("loadedmetadata", () => {
-    videoReady = true;
-    videoDuration = journeyVideo.duration || 0;
-    journeyVideo.pause();
-    journeyVideo.currentTime = 0;
-    syncVideoToScroll();
-    syncSceneLabel();
-  });
-  journeyVideo.addEventListener("canplaythrough", () => {
-    videoReady = true;
-    videoDuration = journeyVideo.duration || videoDuration;
-  });
+  if (isTouchDevice) {
+    journeyVideo.loop = true;
+    journeyVideo.muted = true;
+    journeyVideo.setAttribute("muted", "");
+    journeyVideo.setAttribute("autoplay", "");
+    journeyVideo.setAttribute("loop", "");
+    journeyVideo.setAttribute("playsinline", "");
+    const tryPlay = () => journeyVideo.play().catch(() => {});
+    tryPlay();
+    journeyVideo.addEventListener("loadedmetadata", tryPlay);
+    journeyVideo.addEventListener("canplay", tryPlay);
+    // Some mobile browsers still block autoplay until first user gesture.
+    const playOnGesture = () => {
+      tryPlay();
+      window.removeEventListener("touchstart", playOnGesture);
+      window.removeEventListener("touchend", playOnGesture);
+      window.removeEventListener("click", playOnGesture);
+    };
+    window.addEventListener("touchstart", playOnGesture, { passive: true });
+    window.addEventListener("touchend", playOnGesture, { passive: true });
+    window.addEventListener("click", playOnGesture, { passive: true });
+  } else {
+    journeyVideo.addEventListener("loadedmetadata", () => {
+      videoReady = true;
+      videoDuration = journeyVideo.duration || 0;
+      journeyVideo.pause();
+      journeyVideo.currentTime = 0;
+      syncVideoToScroll();
+      syncSceneLabel();
+    });
+    journeyVideo.addEventListener("canplaythrough", () => {
+      videoReady = true;
+      videoDuration = journeyVideo.duration || videoDuration;
+    });
+  }
 }
 
 function journeyProgress() {
@@ -205,6 +236,7 @@ function journeyProgress() {
 }
 
 function syncVideoToScroll() {
+  if (isTouchDevice) return;
   if (!journeyVideo || !videoReady || !videoDuration) return;
   const p = journeyProgress();
   const target = clamp(p) * videoDuration;
@@ -304,19 +336,21 @@ function ensureScrollAnim() {
   requestAnimationFrame(smoothScrollTick);
 }
 
-window.addEventListener(
-  "wheel",
-  (e) => {
-    if (e.ctrlKey) return;
-    e.preventDefault();
-    targetScroll = Math.max(
-      0,
-      Math.min(targetScroll + e.deltaY * WHEEL_MULTIPLIER, maxScroll())
-    );
-    ensureScrollAnim();
-  },
-  { passive: false }
-);
+if (!isTouchDevice) {
+  window.addEventListener(
+    "wheel",
+    (e) => {
+      if (e.ctrlKey) return;
+      e.preventDefault();
+      targetScroll = Math.max(
+        0,
+        Math.min(targetScroll + e.deltaY * WHEEL_MULTIPLIER, maxScroll())
+      );
+      ensureScrollAnim();
+    },
+    { passive: false }
+  );
+}
 
 window.addEventListener("keydown", (e) => {
   const step = window.innerHeight * 0.9;

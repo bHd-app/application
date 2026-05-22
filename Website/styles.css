@@ -1531,6 +1531,30 @@ a {
   .pottery-wheel {
     width: 92vw;
   }
+
+  /* Portrait mobile: give the video real presence instead of a tiny
+     16:9 strip centered in a tall viewport. */
+  .world {
+    width: 100vw;
+    aspect-ratio: 9 / 14;
+  }
+
+  .journey-video {
+    object-fit: cover;
+  }
+
+  .scene-label {
+    max-width: 72vw;
+  }
+
+  .scene-label[data-scene="0"] { top: 8%; left: 6%; }
+  .scene-label[data-scene="1"] { top: 8%; right: 6%; }
+  .scene-label[data-scene="2"] { bottom: 12%; left: 6%; }
+  .scene-label[data-scene="3"] { bottom: 12%; right: 6%; }
+
+  .scene-title {
+    font-size: clamp(1.2rem, 5vw, 1.8rem);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
