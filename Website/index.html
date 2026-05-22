@@ -3,170 +3,94 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gift Journey</title>
+    <title>Expergift Journey</title>
     <meta
       name="description"
-      content="A cinematic scroll-driven gift reveal with date night, nature, adventure, and cooking class moments."
+      content="A cinematic scroll journey where one character walks through giftable experiences."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Playfair+Display:wght@700;800&family=Quicksand:wght@600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,400;1,500;1,600&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="texture-overlay" aria-hidden="true"></div>
 
     <nav class="nav" aria-label="Primary navigation">
-      <a class="brand" href="#story" aria-label="Gift Journey home">
+      <a class="brand" href="#intro" aria-label="Expergift home">
         <span class="brand-mark"></span>
-        <span>Gift Journey</span>
+        <span>Expergift</span>
       </a>
-      <a class="nav-link" href="#finale">Finale</a>
+      <div class="nav-links">
+        <a href="#intro" data-nav>About</a>
+        <a href="#journey" data-nav>Categories</a>
+        <a href="#outro" data-nav>Story</a>
+        <a href="#" data-nav class="nav-cta">Login</a>
+      </div>
     </nav>
 
     <main>
-      <section class="scroll-story" id="story" aria-label="Gift opening story">
-        <div class="stage">
-          <header class="gift-invitation">
-            <p>Open the gift and see what experiences have been given to you.</p>
-          </header>
-
-          <div class="world" aria-hidden="true">
-            <div class="world-layer base-world"></div>
-            <div class="world-layer date-world">
-              <span class="heart heart-one"></span>
-              <span class="heart heart-two"></span>
-              <span class="heart heart-three"></span>
-              <span class="heart heart-four"></span>
-              <span class="heart heart-five"></span>
-            </div>
-            <div class="world-layer nature-world">
-              <span class="sun"></span>
-              <span class="hill hill-one"></span>
-              <span class="hill hill-two"></span>
-              <span class="hill hill-three"></span>
-              <span class="bird bird-one"></span>
-              <span class="bird bird-two"></span>
-              <span class="bird bird-three"></span>
-              <span class="leaf leaf-one"></span>
-              <span class="leaf leaf-two"></span>
-              <span class="leaf leaf-three"></span>
-            </div>
-            <div class="world-layer adventure-world">
-              <span class="wave-line wave-line-one"></span>
-              <span class="wave-line wave-line-two"></span>
-              <span class="wave-line wave-line-three"></span>
-              <span class="diver"></span>
-              <span class="fish fish-one"></span>
-              <span class="fish fish-two"></span>
-              <span class="bubble bubble-one"></span>
-              <span class="bubble bubble-two"></span>
-              <span class="bubble bubble-three"></span>
-            </div>
-            <div class="world-layer cooking-world">
-              <span class="kitchen-light"></span>
-              <span class="flour-cloud flour-one"></span>
-              <span class="flour-cloud flour-two"></span>
-              <span class="food-item food-bread"></span>
-              <span class="food-item food-croissant"></span>
-              <span class="food-item food-pasta"></span>
-              <span class="food-item food-spoon"></span>
-              <span class="food-item food-tomato"></span>
-            </div>
+      <section class="hero hero-intro" id="intro" aria-label="Journey introduction">
+        <div class="stars" aria-hidden="true"></div>
+        <div class="hero-inner">
+          <p class="hero-eyebrow">A Journey Awaits</p>
+          <h1 class="hero-title">
+            Do you know what<br />you're about to <em>experience?</em>
+          </h1>
+          <p class="hero-sub">Let's walk through it, together.</p>
+          <div class="scroll-cue" aria-hidden="true">
+            <span>Scroll</span>
+            <i class="scroll-line"></i>
           </div>
-
-          <div class="scene-copy" aria-live="polite">
-            <p class="chapter">Scene <span id="chapterNumber">00</span></p>
-            <h1 id="storyTitle">Scroll to open.</h1>
-            <p id="storyText">
-              The gift is the first frame. Pull the page down and let each
-              experience change the whole room.
-            </p>
-          </div>
-
-          <div class="gift-scene" aria-hidden="true">
-            <div class="experience-card card-date">
-              <div class="card-media panel-date"></div>
-              <span>Date Night</span>
-            </div>
-
-            <div class="experience-card card-nature">
-              <div class="card-media panel-nature"></div>
-              <span>Nature</span>
-            </div>
-
-            <div class="experience-card card-adventure">
-              <div class="card-media panel-adventure"></div>
-              <span>Adventure</span>
-              <div class="swimmer">
-                <span class="swimmer-head"></span>
-                <span class="swimmer-arm arm-one"></span>
-                <span class="swimmer-arm arm-two"></span>
-                <span class="swim-wake wake-one"></span>
-                <span class="swim-wake wake-two"></span>
-              </div>
-            </div>
-
-            <div class="experience-card card-cooking">
-              <div class="card-media panel-cooking"></div>
-              <span>Cooking Class</span>
-            </div>
-
-            <div class="gift real-gift" role="img" aria-label="Scroll-controlled cinematic gift opening video">
-              <div class="real-gift-shadow"></div>
-              <div class="gift-glow"></div>
-              <video
-                class="gift-video"
-                id="giftOpeningVideo"
-                src="./assets/gift-opening.mp4"
-                preload="auto"
-                muted
-                playsinline
-              ></video>
-            </div>
-
-            <canvas id="sparkles" width="1000" height="1000"></canvas>
-          </div>
-
-          <aside class="progress-panel" aria-label="Opening progress">
-            <span>Reveal</span>
-            <div class="progress-track">
-              <div class="progress-fill"></div>
-            </div>
-          </aside>
         </div>
       </section>
 
-      <section class="finale" id="finale">
-        <div class="finale-stage">
-          <p class="finale-note">Now you can gift beautiful memories.</p>
-
-          <div class="gift-card-certificate">
-            <div class="certificate-content">
-              <p class="certificate-kicker">A gift for my dear Alex</p>
-              <h2>Experience Gift Card</h2>
-              <ul>
-                <li><span>Date Night</span><time>Fri, June 12 - 8:00 PM</time></li>
-                <li><span>Nature Escape</span><time>Sat, June 20 - 9:30 AM</time></li>
-                <li><span>Ocean Dive</span><time>Sun, June 28 - 11:00 AM</time></li>
-                <li><span>Cooking Class</span><time>Thu, July 2 - 6:30 PM</time></li>
-              </ul>
-            </div>
+      <section class="journey" id="journey" aria-label="Experience journey">
+        <div class="stage">
+          <div class="world" aria-hidden="true">
+            <video
+              id="journeyVideo"
+              class="journey-video"
+              muted
+              playsinline
+              preload="auto"
+            >
+              <source src="./assets/journey/Man_walking_through_environments_202605210302.mp4" type="video/mp4" />
+            </video>
           </div>
 
-          <div class="finale-stack" aria-hidden="true">
-            <span class="finale-card panel-date"></span>
-            <span class="finale-card panel-nature"></span>
-            <span class="finale-card panel-adventure"></span>
-            <span class="finale-card panel-cooking"></span>
+          <div class="scene-labels" aria-hidden="true">
+            <article class="scene-label" data-scene="0">
+              <span class="scene-eyebrow">Experience 01</span>
+              <h3 class="scene-title">A nature <em>tour</em>,</h3>
+            </article>
+            <article class="scene-label" data-scene="1">
+              <span class="scene-eyebrow">Or 02</span>
+              <h3 class="scene-title">a candlelit <em>dinner</em>,</h3>
+            </article>
+            <article class="scene-label" data-scene="2">
+              <span class="scene-eyebrow">Or 03</span>
+              <h3 class="scene-title">a cooking <em>class</em>,</h3>
+            </article>
+            <article class="scene-label" data-scene="3">
+              <span class="scene-eyebrow">Or 04</span>
+              <h3 class="scene-title">a pottery <em>experience</em>.</h3>
+            </article>
           </div>
+        </div>
+      </section>
 
-          <div class="finale-copy">
-            <a class="cta" href="#story">Open Again</a>
-          </div>
+      <section class="hero hero-outro" id="outro" aria-label="Journey conclusion">
+        <div class="stars" aria-hidden="true"></div>
+        <div class="hero-inner">
+          <p class="hero-eyebrow">The Story Ends Here</p>
+          <h2 class="hero-title">
+            And <em>yours begins.</em>
+          </h2>
+          <p class="hero-sub">Four moments. One unforgettable day. Wrapped into a single gift.</p>
+          <a class="hero-cta" href="#intro">Begin the Journey <span aria-hidden="true">→</span></a>
         </div>
       </section>
     </main>

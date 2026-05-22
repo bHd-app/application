@@ -1,328 +1,374 @@
-const root = document.documentElement;
-const story = document.querySelector(".scroll-story");
-const finale = document.querySelector(".finale");
-const title = document.querySelector("#storyTitle");
-const text = document.querySelector("#storyText");
-const chapterNumber = document.querySelector("#chapterNumber");
-const canvas = document.querySelector("#sparkles");
-const ctx = canvas.getContext("2d");
-const giftOpeningVideo = document.querySelector("#giftOpeningVideo");
-
-const chapters = [
-  {
-    at: 0,
-    scene: "intro",
-    number: "00",
-    title: "Scroll down",
-    text: "",
-  },
-  {
-    at: 0.58,
-    scene: "date",
-    number: "01",
-    title: "An exceptional date",
-    text: "",
-  },
-  {
-    at: 0.74,
-    scene: "nature",
-    number: "02",
-    title: "Or an experience in the heart of nature",
-    text: "",
-  },
-  {
-    at: 0.86,
-    scene: "adventure",
-    number: "03",
-    title: "Or diving into the ocean",
-    text: "",
-  },
-  {
-    at: 0.94,
-    scene: "cooking",
-    number: "04",
-    title: "Or even a cooking class",
-    text: "",
-  },
-];
-
-const particles = Array.from({ length: 190 }, (_, index) => {
-  const angle = (index / 190) * Math.PI * 2;
-  const orbit = 0.18 + Math.random() * 0.84;
-
-  return {
-    angle,
-    orbit,
-    size: 1.1 + Math.random() * 4.8,
-    spin: 0.38 + Math.random() * 1.9,
-    wave: Math.random() * Math.PI * 2,
-    color: ["#f3c36b", "#ff6f8f", "#89d8b7", "#ffffff", "#2368a4", "#b82956"][
-      index % 6
-    ],
+/* ---------- helpers ---------- */
+function clamp(v, a = 0, b = 1) {
+  return Math.min(b, Math.max(a, v));
+}
+function seededRandom(seed) {
+  let state = seed;
+  return function () {
+    state = (state * 1664525 + 1013904223) % 4294967296;
+    return state / 4294967296;
   };
+}
+
+/* ---------- stars: paint + parallax + proximity sparkle ---------- */
+function paintStars(container, count, seed) {
+  const rand = seededRandom(seed);
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < count; i++) {
+    const star = document.createElement("span");
+    star.className = "star";
+    // size variance: mostly small, occasional big
+    const sizeRoll = rand();
+    let size;
+    if (sizeRoll > 0.96) size = 4 + rand() * 3;
+    else if (sizeRoll > 0.8) size = 2.4 + rand() * 1.6;
+    else size = 1 + rand() * 1.6;
+    star.style.left = (rand() * 100).toFixed(2) + "%";
+    star.style.top = (rand() * 100).toFixed(2) + "%";
+    star.style.width = size.toFixed(2) + "px";
+    star.style.height = size.toFixed(2) + "px";
+
+    // color variety
+    const colorRoll = rand();
+    let tint;
+    if (colorRoll > 0.94) tint = "rgb(255, 230, 180)"; // warm gold
+    else if (colorRoll > 0.88) tint = "rgb(210, 225, 255)"; // cool blue
+    else tint = "#fff";
+    star.style.background = tint;
+    star.style.setProperty("--tint", tint);
+
+    const max = 0.5 + rand() * 0.5;
+    const min = max * (0.08 + rand() * 0.25);
+    star.style.setProperty("--opacity-max", max.toFixed(2));
+    star.style.setProperty("--opacity-min", min.toFixed(2));
+    const depth = (rand() * 0.85 + 0.15).toFixed(2);
+    star.style.setProperty("--depth", depth);
+    const dur = (1.6 + rand() * 4.4).toFixed(2) + "s";
+    const delay = (rand() * 5).toFixed(2) + "s";
+    star.style.setProperty("--twinkle-dur", dur);
+    star.style.setProperty("--twinkle-delay", delay);
+    star.style.opacity = max.toFixed(2);
+    frag.appendChild(star);
+  }
+  container.appendChild(frag);
+}
+
+document.querySelectorAll(".stars").forEach((node, index) => {
+  paintStars(node, 480, 1337 + index * 91);
 });
 
-let latestProgress = 0;
-let smoothProgress = 0;
-let activeChapter = -1;
-let ticking = false;
-let animationFrame = 0;
-let currentGiftProgress = 0;
-let giftVideoPauseTimer = 0;
-
-function clamp(value, min = 0, max = 1) {
-  return Math.min(max, Math.max(min, value));
+const starContainers = document.querySelectorAll(".stars");
+let parallaxTicking = false;
+function updateParallax() {
+  const vh = window.innerHeight;
+  starContainers.forEach((el) => {
+    const rect = el.getBoundingClientRect();
+    const center = rect.top + rect.height / 2;
+    const t = (center - vh / 2) / vh;
+    el.style.setProperty("--rel-scroll", t.toFixed(3));
+  });
+  parallaxTicking = false;
 }
-
-function easeOutCubic(value) {
-  return 1 - Math.pow(1 - value, 3);
+function requestParallax() {
+  if (parallaxTicking) return;
+  parallaxTicking = true;
+  requestAnimationFrame(updateParallax);
 }
+window.addEventListener("resize", updateParallax);
+updateParallax();
 
-function easeInOutCubic(value) {
-  return value < 0.5
-    ? 4 * value * value * value
-    : 1 - Math.pow(-2 * value + 2, 3) / 2;
+/* Per-star proximity sparkle */
+const starCache = [];
+function recomputeStarPositions() {
+  starCache.length = 0;
+  document.querySelectorAll(".hero .star").forEach((el) => {
+    const rect = el.getBoundingClientRect();
+    if (rect.bottom < -200 || rect.top > window.innerHeight + 200) return;
+    starCache.push({
+      el,
+      cx: rect.left + rect.width / 2,
+      cy: rect.top + rect.height / 2,
+      lastBoost: 0,
+    });
+  });
 }
-
-function segment(progress, start, end) {
-  return clamp((progress - start) / (end - start));
+let recomputePending = false;
+function requestRecompute() {
+  if (recomputePending) return;
+  recomputePending = true;
+  requestAnimationFrame(() => {
+    recomputeStarPositions();
+    recomputePending = false;
+  });
 }
+window.addEventListener("resize", requestRecompute);
 
-function stageAmount(progress, start, peak, end) {
-  const fadeIn = segment(progress, start, peak);
-  const fadeOut = 1 - segment(progress, peak, end);
-  return easeInOutCubic(clamp(Math.min(fadeIn, fadeOut)));
-}
+let mouseX = -9999,
+  mouseY = -9999;
+window.addEventListener("mousemove", (e) => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
 
-function calculateProgress() {
-  const rect = story.getBoundingClientRect();
-  const distance = rect.height - window.innerHeight;
-  return clamp(-rect.top / distance);
-}
-
-function calculateFinaleProgress() {
-  const rect = finale.getBoundingClientRect();
-  const distance = rect.height - window.innerHeight;
-  return clamp(-rect.top / distance);
-}
-
-function syncChapter(progress) {
-  const nextIndex = chapters.reduce((current, chapter, index) => {
-    return progress >= chapter.at ? index : current;
-  }, 0);
-
-  if (nextIndex === activeChapter) {
-    return;
+function sparkleLoop() {
+  const r = 160;
+  const r2 = r * r;
+  for (let i = 0; i < starCache.length; i++) {
+    const s = starCache[i];
+    const dx = s.cx - mouseX;
+    const dy = s.cy - mouseY;
+    const d2 = dx * dx + dy * dy;
+    let boost = 0;
+    if (d2 < r2) {
+      boost = 1 - Math.sqrt(d2) / r;
+      boost = boost * boost; // sharper falloff
+    }
+    if (Math.abs(boost - s.lastBoost) > 0.01) {
+      s.lastBoost = boost;
+      s.el.style.setProperty("--boost", boost.toFixed(3));
+    }
   }
+  requestAnimationFrame(sparkleLoop);
+}
+recomputeStarPositions();
+sparkleLoop();
 
-  activeChapter = nextIndex;
-  const chapter = chapters[nextIndex];
-  root.dataset.scene = chapter.scene;
-  title.textContent = chapter.title;
-  text.textContent = chapter.text;
-  chapterNumber.textContent = chapter.number;
+/* ---------- shooting stars every 2s ---------- */
+function spawnShootingStar(container) {
+  if (!container) return;
+  const star = document.createElement("span");
+  star.className = "shooting-star";
+  const fromLeft = Math.random() > 0.5;
+  const startX = fromLeft ? -8 : 108;
+  const startY = Math.random() * 55;
+  const baseAngle = fromLeft ? 25 : 155;
+  const angle = baseAngle + (Math.random() - 0.5) * 18;
+  const distance = 135;
+  const rad = (angle * Math.PI) / 180;
+  const dx = Math.cos(rad) * distance;
+  const dy = Math.sin(rad) * distance;
+  star.style.setProperty("--start-x", startX + "vw");
+  star.style.setProperty("--start-y", startY + "vh");
+  star.style.setProperty("--travel-x", dx + "vw");
+  star.style.setProperty("--travel-y", dy + "vh");
+  star.style.setProperty("--angle", angle + "deg");
+  const duration = 1100 + Math.random() * 500;
+  star.style.setProperty("--dur", duration + "ms");
+  container.appendChild(star);
+  setTimeout(() => star.remove(), duration + 200);
 }
 
-function sizeCanvas() {
-  const scale = window.devicePixelRatio || 1;
-  const bounds = canvas.getBoundingClientRect();
-  canvas.width = Math.floor(bounds.width * scale);
-  canvas.height = Math.floor(bounds.height * scale);
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);
-}
-
-function drawSparkles(progress, mood) {
-  const width = canvas.clientWidth;
-  const height = canvas.clientHeight;
-  const centerX = width / 2;
-  const centerY = height / 2;
-  const opening = easeOutCubic(segment(progress, 0.08, 0.34));
-  const reveal = easeInOutCubic(segment(progress, 0.12, 0.9));
-
-  ctx.clearRect(0, 0, width, height);
-
-  particles.forEach((particle, index) => {
-    const pulse = Math.sin(progress * 14 + particle.wave) * 0.5 + 0.5;
-    const radius = (44 + particle.orbit * 318) * opening;
-    const drift = reveal * 118 * Math.sin(index * 1.7);
-    const angle = particle.angle + progress * particle.spin * 2.25;
-    const x = centerX + Math.cos(angle) * (radius + drift);
-    const y =
-      centerY +
-      Math.sin(angle) * (radius * 0.7 + drift * 0.28) -
-      opening * 34 -
-      reveal * 18 * Math.cos(index);
-    const alpha = clamp(opening * (0.26 + pulse * 0.74) - reveal * 0.03);
-    const color =
-      mood.cooking > 0.5
-        ? ["#f3c36b", "#ffffff", "#ffcf9f"][index % 3]
-        : mood.adventure > 0.5
-          ? ["#ffffff", "#86d6ff", "#2368a4"][index % 3]
-          : mood.nature > 0.5
-            ? ["#ffffff", "#89d8b7", "#2d8f62"][index % 3]
-            : particle.color;
-
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.translate(x, y);
-    ctx.rotate(angle + progress * 4);
-    ctx.fillStyle = color;
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 20 * alpha;
-    ctx.beginPath();
-    ctx.roundRect(
-      -particle.size / 2,
-      -particle.size / 2,
-      particle.size,
-      particle.size,
-      1.2
-    );
-    ctx.fill();
-    ctx.restore();
+function visibleStarContainers() {
+  const vh = window.innerHeight;
+  return Array.from(document.querySelectorAll(".stars")).filter((c) => {
+    const r = c.getBoundingClientRect();
+    return r.bottom > 0 && r.top < vh;
   });
 }
 
-function syncGiftOpeningVideo(progress, options = {}) {
-  currentGiftProgress = clamp(progress);
+setInterval(() => {
+  const containers = visibleStarContainers();
+  if (!containers.length) return;
+  const pick = containers[Math.floor(Math.random() * containers.length)];
+  spawnShootingStar(pick);
+}, 2000);
 
-  if (!giftOpeningVideo.duration || Number.isNaN(giftOpeningVideo.duration)) {
-    return;
-  }
+/* ---------- journey video: scrub on scroll ---------- */
+const journey = document.querySelector(".journey");
+const stage = document.querySelector(".stage");
+const journeyVideo = document.getElementById("journeyVideo");
 
-  const targetTime = clamp(progress) * Math.max(giftOpeningVideo.duration - 0.05, 0);
-  const drift = Math.abs(giftOpeningVideo.currentTime - targetTime);
-  const shouldPinFrame =
-    options.force ||
-    giftOpeningVideo.paused ||
-    currentGiftProgress <= 0.01 ||
-    currentGiftProgress >= 0.99 ||
-    drift > 0.28;
+let videoReady = false;
+let videoDuration = 0;
 
-  if (shouldPinFrame) {
-    giftOpeningVideo.currentTime = targetTime;
-  }
+if (journeyVideo) {
+  journeyVideo.addEventListener("loadedmetadata", () => {
+    videoReady = true;
+    videoDuration = journeyVideo.duration || 0;
+    journeyVideo.pause();
+    journeyVideo.currentTime = 0;
+    syncVideoToScroll();
+    syncSceneLabel();
+  });
+  journeyVideo.addEventListener("canplaythrough", () => {
+    videoReady = true;
+    videoDuration = journeyVideo.duration || videoDuration;
+  });
 }
 
-function playGiftOpeningVideoWhileScrolling() {
-  if (!giftOpeningVideo.duration || Number.isNaN(giftOpeningVideo.duration)) {
-    return;
-  }
+function journeyProgress() {
+  if (!journey) return 0;
+  const rect = journey.getBoundingClientRect();
+  const distance = rect.height - window.innerHeight;
+  if (distance <= 0) return 0;
+  return clamp(-rect.top / distance);
+}
 
-  if (currentGiftProgress > 0.01 && currentGiftProgress < 0.99) {
-    const playPromise = giftOpeningVideo.play();
-
-    if (playPromise) {
-      playPromise.catch(() => {
-        syncGiftOpeningVideo(currentGiftProgress, { force: true });
-      });
+function syncVideoToScroll() {
+  if (!journeyVideo || !videoReady || !videoDuration) return;
+  const p = journeyProgress();
+  const target = clamp(p) * videoDuration;
+  // Avoid micro-thrash
+  if (Math.abs(journeyVideo.currentTime - target) > 0.02) {
+    if ("fastSeek" in journeyVideo) {
+      try {
+        journeyVideo.fastSeek(target);
+      } catch (e) {
+        journeyVideo.currentTime = target;
+      }
+    } else {
+      journeyVideo.currentTime = target;
     }
   }
-
-  window.clearTimeout(giftVideoPauseTimer);
-  giftVideoPauseTimer = window.setTimeout(() => {
-    giftOpeningVideo.pause();
-    syncGiftOpeningVideo(currentGiftProgress, { force: true });
-  }, 180);
 }
 
-function render() {
-  latestProgress = calculateProgress();
-  const finaleProgress = easeInOutCubic(calculateFinaleProgress());
-  const finaleCard = Math.min(finaleProgress / 0.58, 1);
-  const finaleMessage = segment(finaleProgress, 0.5, 1);
-  smoothProgress += (latestProgress - smoothProgress) * 0.24;
+/* ---------- scene labels driven by progress ---------- */
+const SCENES = [
+  { start: 0.0, end: 0.25 },
+  { start: 0.25, end: 0.5 },
+  { start: 0.5, end: 0.75 },
+  { start: 0.75, end: 1.01 },
+];
+const sceneLabels = document.querySelectorAll(".scene-label");
+let activeSceneIdx = -1;
 
-  const release = easeInOutCubic(segment(smoothProgress, 0.04, 0.18));
-  const invitation = 1 - easeInOutCubic(segment(smoothProgress, 0.004, 0.055));
-  const introCopy = 1 - easeInOutCubic(segment(smoothProgress, 0.006, 0.07));
-  const giftProgress = easeInOutCubic(segment(smoothProgress, 0.03, 0.7));
-  const opening = easeOutCubic(segment(smoothProgress, 0.42, 0.7));
-  const openGift = easeInOutCubic(segment(smoothProgress, 0.54, 0.72));
-  const date = stageAmount(smoothProgress, 0.58, 0.7, 0.82);
-  const nature = stageAmount(smoothProgress, 0.74, 0.83, 0.92);
-  const adventure = stageAmount(smoothProgress, 0.86, 0.93, 0.99);
-  const cooking = easeInOutCubic(segment(smoothProgress, 0.94, 0.995));
+function syncSceneLabel() {
+  const p = journeyProgress();
+  let idx = SCENES.findIndex((s) => p >= s.start && p < s.end);
+  if (idx < 0) idx = p >= 1 ? SCENES.length - 1 : 0;
+  if (idx === activeSceneIdx) return;
+  activeSceneIdx = idx;
+  sceneLabels.forEach((el, i) => {
+    el.classList.toggle("active", i === idx);
+  });
+}
 
-  root.style.setProperty("--progress", smoothProgress.toFixed(4));
-  root.style.setProperty("--finale", finaleProgress.toFixed(4));
-  root.style.setProperty("--finale-card", finaleCard.toFixed(4));
-  root.style.setProperty("--finale-message", finaleMessage.toFixed(4));
-  root.style.setProperty("--invitation", invitation.toFixed(4));
-  root.style.setProperty("--intro-copy", introCopy.toFixed(4));
-  root.style.setProperty("--release", release.toFixed(4));
-  root.style.setProperty("--opening", opening.toFixed(4));
-  root.style.setProperty("--open-gift", openGift.toFixed(4));
-  root.style.setProperty("--date", date.toFixed(4));
-  root.style.setProperty("--nature", nature.toFixed(4));
-  root.style.setProperty("--adventure", adventure.toFixed(4));
-  root.style.setProperty("--cooking", cooking.toFixed(4));
+/* ---------- ambient color tint matching the video chapter ---------- */
+const SCENE_TINTS = [
+  { t: 0.0, color: "10, 26, 16" },
+  { t: 0.25, color: "38, 14, 24" },
+  { t: 0.5, color: "32, 20, 8" },
+  { t: 0.75, color: "26, 14, 8" },
+];
+function pickTint(progress) {
+  let a = SCENE_TINTS[0];
+  let b = SCENE_TINTS[SCENE_TINTS.length - 1];
+  for (let i = 0; i < SCENE_TINTS.length - 1; i++) {
+    if (progress >= SCENE_TINTS[i].t && progress < SCENE_TINTS[i + 1].t) {
+      a = SCENE_TINTS[i];
+      b = SCENE_TINTS[i + 1];
+      break;
+    }
+  }
+  const span = b.t - a.t || 1;
+  const local = (progress - a.t) / span;
+  const ar = a.color.split(",").map((n) => parseFloat(n));
+  const br = b.color.split(",").map((n) => parseFloat(n));
+  return ar.map((v, i) => Math.round(v + (br[i] - v) * clamp(local))).join(",");
+}
+function updateAmbient() {
+  const p = journeyProgress();
+  document.documentElement.style.setProperty("--ambient", pickTint(p));
+}
 
-  syncChapter(smoothProgress);
-  syncGiftOpeningVideo(giftProgress);
-  drawSparkles(smoothProgress, { date, nature, adventure, cooking });
+/* ---------- smooth easing scroll (wheel inertia) ---------- */
+let targetScroll = window.scrollY;
+let currentScroll = window.scrollY;
+let scrollAnimating = false;
+const SCROLL_EASE = 0.085;
+const WHEEL_MULTIPLIER = 0.9;
 
-  if (Math.abs(latestProgress - smoothProgress) > 0.001) {
-    animationFrame = requestAnimationFrame(render);
+function maxScroll() {
+  return Math.max(
+    0,
+    document.documentElement.scrollHeight - window.innerHeight
+  );
+}
+
+function smoothScrollTick() {
+  const diff = targetScroll - currentScroll;
+  if (Math.abs(diff) < 0.4) {
+    currentScroll = targetScroll;
+    window.scrollTo(0, currentScroll);
+    scrollAnimating = false;
     return;
   }
-
-  ticking = false;
-  animationFrame = 0;
+  currentScroll += diff * SCROLL_EASE;
+  window.scrollTo(0, currentScroll);
+  requestAnimationFrame(smoothScrollTick);
 }
 
-function requestRender() {
-  if (ticking) {
+function ensureScrollAnim() {
+  if (scrollAnimating) return;
+  scrollAnimating = true;
+  requestAnimationFrame(smoothScrollTick);
+}
+
+window.addEventListener(
+  "wheel",
+  (e) => {
+    if (e.ctrlKey) return;
+    e.preventDefault();
+    targetScroll = Math.max(
+      0,
+      Math.min(targetScroll + e.deltaY * WHEEL_MULTIPLIER, maxScroll())
+    );
+    ensureScrollAnim();
+  },
+  { passive: false }
+);
+
+window.addEventListener("keydown", (e) => {
+  const step = window.innerHeight * 0.9;
+  let delta = 0;
+  if (e.key === "ArrowDown") delta = 80;
+  else if (e.key === "ArrowUp") delta = -80;
+  else if (e.key === "PageDown" || e.key === " ") delta = step;
+  else if (e.key === "PageUp") delta = -step;
+  else if (e.key === "Home") {
+    e.preventDefault();
+    targetScroll = 0;
+    ensureScrollAnim();
     return;
-  }
+  } else if (e.key === "End") {
+    e.preventDefault();
+    targetScroll = maxScroll();
+    ensureScrollAnim();
+    return;
+  } else return;
+  e.preventDefault();
+  targetScroll = Math.max(0, Math.min(targetScroll + delta, maxScroll()));
+  ensureScrollAnim();
+});
 
-  ticking = true;
-  if (animationFrame) {
-    cancelAnimationFrame(animationFrame);
-  }
-  animationFrame = requestAnimationFrame(render);
-}
+document.querySelectorAll('a[href^="#"]').forEach((a) => {
+  a.addEventListener("click", (e) => {
+    const id = a.getAttribute("href").slice(1);
+    if (!id) return;
+    const target = document.getElementById(id);
+    if (!target) return;
+    e.preventDefault();
+    targetScroll = Math.max(
+      0,
+      Math.min(window.scrollY + target.getBoundingClientRect().top, maxScroll())
+    );
+    ensureScrollAnim();
+  });
+});
 
 window.addEventListener(
   "scroll",
   () => {
-    const immediateProgress = calculateProgress();
-    const immediateGiftProgress = easeInOutCubic(segment(immediateProgress, 0.03, 0.7));
-
-    syncGiftOpeningVideo(immediateGiftProgress);
-    playGiftOpeningVideoWhileScrolling();
-    requestRender();
+    requestParallax();
+    requestRecompute();
+    syncVideoToScroll();
+    syncSceneLabel();
+    updateAmbient();
   },
   { passive: true }
 );
-window.addEventListener("resize", () => {
-  sizeCanvas();
-  requestRender();
-});
 
-giftOpeningVideo.addEventListener("loadedmetadata", () => {
-  giftOpeningVideo.pause();
-  syncGiftOpeningVideo(0);
-  requestRender();
-});
-
-if (!CanvasRenderingContext2D.prototype.roundRect) {
-  CanvasRenderingContext2D.prototype.roundRect = function roundRect(
-    x,
-    y,
-    width,
-    height,
-    radius
-  ) {
-    const r = Math.min(radius, width / 2, height / 2);
-    this.moveTo(x + r, y);
-    this.arcTo(x + width, y, x + width, y + height, r);
-    this.arcTo(x + width, y + height, x, y + height, r);
-    this.arcTo(x, y + height, x, y, r);
-    this.arcTo(x, y, x + width, y, r);
-    this.closePath();
-    return this;
-  };
-}
-
-sizeCanvas();
-requestRender();
+requestParallax();
+syncVideoToScroll();
+syncSceneLabel();
+updateAmbient();
