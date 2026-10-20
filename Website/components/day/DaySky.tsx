@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import type { MotionValue } from 'framer-motion';
 
-import { hourAt, sky } from '@/lib/day';
+import { FOCAL, HORIZON_UV, sky } from '@/lib/day';
 
 // Full-screen sea and sky over a whole day, drawn with WebGL.
 //
@@ -12,7 +12,8 @@ import { hourAt, sky } from '@/lib/day';
 // sun wherever it is — including below the horizon, which gives real twilight
 // and earth shadow. Pass 2 draws the frame: sky from the lookup, lit clouds,
 // sun, moon and stars, and a sea of sharp-crested waves that reflects all of it.
-// Scroll progress drives the clock (see lib/day.ts).
+// The page drives the clock (see lib/day.ts); the camera stays still and the
+// sun and moon arc across the frame.
 
 const VERT = `
 attribute vec2 aPos;
@@ -108,7 +109,6 @@ uniform vec3 uSun;
 uniform vec3 uMoon;
 uniform float uNight;    // 0 day … 1 full night
 uniform float uExposure;
-uniform float uYaw;
 uniform float uStarSpin; // radians, slow rotation of the night sky
 uniform sampler2D uLut;
 
@@ -260,9 +260,7 @@ vec3 aces(vec3 x) {
 
 void main() {
   vec2 uv = (gl_FragCoord.xy - 0.5 * uRes) / uRes.y;
-  vec3 rd = normalize(vec3(uv.x, uv.y - 0.035, -1.3));
-  float cy = cos(uYaw), sy = sin(uYaw);
-  rd = vec3(cy * rd.x - sy * rd.z, rd.y, sy * rd.x + cy * rd.z);
+  vec3 rd = normalize(vec3(uv.x, uv.y - ${HORIZON_UV.toFixed(4)}, -${FOCAL.toFixed(4)}));
 
   vec3 col;
   if (rd.y >= 0.0) {
@@ -320,11 +318,12 @@ const LUT_W = 192;
 const LUT_H = 96;
 
 export default function DaySky({
-  progress,
+  hour,
   /** Render resolution relative to CSS pixels (device pixel ratio capped at 1.5). */
   renderScale = 0.8,
 }: {
-  progress: MotionValue<number>;
+  /** Hour of the day, 0..24 (may run past 24 for the late moon). */
+  hour: MotionValue<number>;
   renderScale?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -391,7 +390,6 @@ export default function DaySky({
       moon: u(mainProg, 'uMoon'),
       night: u(mainProg, 'uNight'),
       exposure: u(mainProg, 'uExposure'),
-      yaw: u(mainProg, 'uYaw'),
       starSpin: u(mainProg, 'uStarSpin'),
       lut: u(mainProg, 'uLut'),
     };
@@ -435,8 +433,8 @@ export default function DaySky({
         }
       }
       last = now;
-      const hour = hourAt(progress.get());
-      const s = sky(hour);
+      const h = hour.get();
+      const s = sky(h, canvas.clientWidth / Math.max(1, canvas.clientHeight));
 
       // The sky only changes when the sun moves; skip the lookup pass otherwise.
       const sunKey = s.sun.map((v) => v.toFixed(4)).join();
@@ -467,8 +465,7 @@ export default function DaySky({
       gl.uniform3fv(M.moon, s.moon);
       gl.uniform1f(M.night, s.night);
       gl.uniform1f(M.exposure, exposure);
-      gl.uniform1f(M.yaw, s.yaw);
-      gl.uniform1f(M.starSpin, hour * 0.04);
+      gl.uniform1f(M.starSpin, h * 0.04);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
 
       frame = requestAnimationFrame(draw);
@@ -480,7 +477,7 @@ export default function DaySky({
       window.removeEventListener('resize', resize);
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
-  }, [progress, renderScale]);
+  }, [hour, renderScale]);
 
   return (
     <div

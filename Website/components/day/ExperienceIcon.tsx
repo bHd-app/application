@@ -5,7 +5,7 @@ export default function ExperienceIcon({
   icon,
   className,
 }: {
-  icon: Experience['icon'];
+  icon: Experience['id'];
   className?: string;
 }) {
   const common = {
