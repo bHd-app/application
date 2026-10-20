@@ -1,21 +1,36 @@
-# Gift Journey Website
+# Expergift Website
 
-A standalone static prototype for a cinematic scroll-driven gift reveal. The
-gift opening is a real scroll-scrubbed MP4 video, then date night, nature,
-adventure, and cooking class moments escape from the box.
+One day by the sea, scrubbed by scroll: sunrise, noon, sunset and a moonlit
+night, drawn live in WebGL. Four experiences (a morning hike, lunch by the
+water, a cooking workshop, pottery at night) appear at their time of day and
+end on a single gift card.
 
 ## Run Locally
 
+Needs Node.js 18.18 or newer.
+
 ```bash
 cd Website
-python3 -m http.server 5173
+npm install
+npm run dev
 ```
 
-Open:
+Open http://localhost:3000
 
-```text
-http://127.0.0.1:5173
-```
+For a production build: `npm run build && npm start`.
+
+## Where things live
+
+- `lib/day.ts`: the clock, sun and moon paths, and the experience copy.
+- `components/day/DaySky.tsx`: the sky, clouds, stars, moon and sea shader.
+  Render resolution drops automatically on slow GPUs.
+- `components/day/DayJourney.tsx`: page layout, cards, timeline, gift card.
+
+## Older static prototype
+
+The files below are the earlier static version (video gift reveal). They are
+not used by the Next.js site; open `index.html` with
+`python3 -m http.server 5173` to see it.
 
 ## Assets
 

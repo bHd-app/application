@@ -398,8 +398,10 @@ export default function DaySky({
 
     let W = 0;
     let H = 0;
+    // Lowered automatically on slow GPUs (see the frame timer in draw()).
+    let scale = renderScale;
     const resize = () => {
-      const s = Math.min(window.devicePixelRatio || 1, 1.5) * renderScale;
+      const s = Math.min(window.devicePixelRatio || 1, 1.5) * scale;
       W = Math.max(1, Math.round(canvas.clientWidth * s));
       H = Math.max(1, Math.round(canvas.clientHeight * s));
       if (canvas.width !== W || canvas.height !== H) {
@@ -413,7 +415,26 @@ export default function DaySky({
     const start = performance.now();
     let lastSunKey = '';
     let frame = 0;
+    // Adaptive quality: if frames run long (integrated / older GPUs), drop the
+    // render resolution step by step until the scroll stays smooth. The sea
+    // and sky are soft, so a lower resolution is hard to notice; dropped
+    // frames are not.
+    let last = 0;
+    let avgMs = 16.7;
+    let settle = 0;
     const draw = (now: number) => {
+      if (last) {
+        const dt = now - last;
+        // ignore one-off stalls (tab switch, GC) — only sustained slowness counts
+        if (dt < 60) avgMs += (dt - avgMs) * 0.05;
+        if (++settle > 90 && avgMs > 21 && scale > 0.32) {
+          scale = Math.max(0.32, scale * 0.8);
+          resize();
+          settle = 0;
+          avgMs = 16.7;
+        }
+      }
+      last = now;
       const hour = hourAt(progress.get());
       const s = sky(hour);
 
