@@ -13,7 +13,7 @@ const D2R = Math.PI / 180;
 // Kept here so the sun's path can be fitted to the visible frame.
 export const FOCAL = 1.0;
 export const HORIZON_UV = 0.035; // horizon sits this far above screen centre
-export const PEAK_ELEV = 21; // degrees: top of the arc, just under the frame top
+export const PEAK_ELEV = 17; // degrees: top of the arc, kept inside the frame
 
 export function formatHour(hour: number) {
   const h = Math.floor(hour) % 24;
@@ -55,6 +55,9 @@ export function sky(hour: number, aspect: number) {
     sunElev,
     moonElev,
     night,
+    // the coastline is laid out for a ~16:10 screen; narrower screens squeeze
+    // it part of the way (fully would make the mountains look spiky)
+    landScale: Math.sqrt(Math.min(1, halfFovX / 38.7)),
   };
 }
 
@@ -100,8 +103,8 @@ export const EXPERIENCES: Experience[] = [
   },
   {
     id: 'cook',
-    hour: 17.5,
-    time: 'Afternoon',
+    hour: 18.5,
+    time: 'Evening',
     title: 'Cooking Workshop',
     place: 'Chef’s kitchen',
     blurb:
@@ -128,15 +131,71 @@ export const EXPERIENCES: Experience[] = [
   },
 ];
 
-export type Stop =
-  | { kind: 'intro'; hour: number }
-  | { kind: 'experience'; hour: number; exp: Experience; index: number }
-  | { kind: 'gift'; hour: number };
+/**
+ * Town lights, 0..1. A few shops on the left of the town switch their lights
+ * on in the early evening; the rest of the town follows through dusk.
+ */
+export function townLights(hour: number) {
+  const pts: Array<[number, number]> = [
+    [17.6, 0], [18.5, 0.42], [19.6, 0.6], [20.6, 0.9], [21.5, 1], [26, 1],
+  ];
+  if (hour <= pts[0][0]) return 0;
+  for (let i = 1; i < pts.length; i++) {
+    const [h1, v1] = pts[i];
+    const [h0, v0] = pts[i - 1];
+    if (hour <= h1) return v0 + ((hour - h0) / (h1 - h0)) * (v1 - v0);
+  }
+  return 1;
+}
+
+/**
+ * Where the camera is at each stop: heading (radians, + right), zoom, and
+ * position in metres (the viewer starts on the water, 2 m up, at the origin;
+ * only the 3D town is drawn with this offset — the sky, sea and mountains are
+ * kilometres away and barely shift).
+ */
+export type Camera = { yaw: number; focal: number; pos: [number, number, number] };
+
+export type Stop = { hour: number; cam: Camera } & (
+  | { kind: 'intro' }
+  | { kind: 'experience'; exp: Experience; index: number }
+  | { kind: 'gift' }
+);
+
+/** The buildings the town experiences happen in (azimuth from the origin, distance and ground height in metres). */
+export const TOWN_SPOTS = {
+  restaurant: { az: 0.2, d: 338, y: 1.6 },
+  cook: { az: 0.37, d: 338, y: 1.6 },
+  pottery: { az: 0.285, d: 404, y: 7 },
+};
+type Spot = (typeof TOWN_SPOTS)[keyof typeof TOWN_SPOTS];
+
+/** A camera standing `back` metres in front of a building (and `side` to its right), looking at it. */
+function frame(spot: Spot, back: number, height: number, side: number, focal: number): Camera {
+  const bx = Math.sin(spot.az) * spot.d;
+  const bz = -Math.cos(spot.az) * spot.d;
+  const cx = bx - Math.sin(spot.az) * back + Math.cos(spot.az) * side;
+  const cz = bz + Math.cos(spot.az) * back + Math.sin(spot.az) * side;
+  return { yaw: Math.atan2(bx - cx, -(bz - cz)), focal, pos: [cx, height, cz] };
+}
+
+const ORIGIN: [number, number, number] = [0, 2, 0];
+
+// Each experience frames its own part of the coast: the mountain at sunrise,
+// then into the town — the taverna at midday, the cooking studio as its first
+// lights come on, the pottery workshop at night.
+const EXPERIENCE_CAMS: Record<Experience['id'], Camera> = {
+  hike: { yaw: -0.3, focal: 1.35, pos: ORIGIN },
+  lunch: frame(TOWN_SPOTS.restaurant, 70, 3.0, 9, 1.25),
+  cook: frame(TOWN_SPOTS.cook, 44, 3.2, -6, 1.2),
+  pottery: frame(TOWN_SPOTS.pottery, 32, 9.2, 5, 1.15),
+};
 
 export const STOPS: Stop[] = [
-  { kind: 'intro', hour: 5.6 },
+  { kind: 'intro', hour: 5.6, cam: { yaw: -0.08, focal: 1.0, pos: ORIGIN } },
   ...EXPERIENCES.map(
-    (exp, index) => ({ kind: 'experience', hour: exp.hour, exp, index }) as const,
+    (exp, index) =>
+      ({ kind: 'experience', hour: exp.hour, exp, index, cam: EXPERIENCE_CAMS[exp.id] }) as const,
   ),
-  { kind: 'gift', hour: 23.4 },
+  { kind: 'gift', hour: 23.4, cam: { yaw: 0, focal: 1.0, pos: ORIGIN } },
 ];

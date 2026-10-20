@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import type { MotionValue } from 'framer-motion';
 
-import { FOCAL, HORIZON_UV, sky } from '@/lib/day';
+import { HORIZON_UV, sky, townLights } from '@/lib/day';
 
 // Full-screen sea and sky over a whole day, drawn with WebGL.
 //
@@ -111,6 +111,10 @@ uniform float uNight;    // 0 day … 1 full night
 uniform float uExposure;
 uniform float uStarSpin; // radians, slow rotation of the night sky
 uniform sampler2D uLut;
+uniform float uLights;    // 0 by day … 1 when the town's lights are all on
+uniform float uLandScale; // squeezes the coastline to fit narrow screens
+uniform float uYaw;       // camera heading, radians (+ = right)
+uniform float uFocal;     // camera focal length (bigger = closer)
 
 const float CAM_H = 2.2;
 const float WAVE_H = 1.6;
@@ -209,6 +213,237 @@ vec4 clouds(vec3 rd, vec3 skyCol) {
   return vec4(col, a);
 }
 
+
+// ── Coastline ─────────────────────────────────────────────────────────────
+// Everything on land is drawn per direction, with no images or meshes:
+//  - a mountain massif on the left (the hike): a skyline, plus a fake height
+//    field on its face so it gets gullies, rock strata, forest and snow, all
+//    lit by the real sun direction;
+//  - a forested headland on the right with a lighthouse;
+// Everything shares the sky's light and haze, so it follows the day for free.
+// Night lights come on district by district (uLights).
+
+float hash1(float x) { return fract(sin(x * 127.1) * 43758.5453); }
+float noise1(float x) {
+  float i = floor(x), f = fract(x);
+  return mix(hash1(i), hash1(i + 1.0), f * f * (3.0 - 2.0 * f));
+}
+float fbm1(float x) {
+  float v = 0.0, a = 0.5;
+  for (int i = 0; i < 6; i++) { v += a * noise1(x); x = x * 2.03 + 3.1; a *= 0.5; }
+  return v;
+}
+float ridged1(float x) {
+  float v = 0.0, a = 0.5;
+  for (int i = 0; i < 5; i++) { float n = 1.0 - abs(noise1(x) * 2.0 - 1.0); v += a * n * n; x = x * 2.1 + 1.7; a *= 0.5; }
+  return v;
+}
+float ridged2(vec2 p) {
+  float v = 0.0, a = 0.5;
+  for (int i = 0; i < 5; i++) { float n = 1.0 - abs(noise(p) * 2.0 - 1.0); v += a * n * n; p = mat2(1.6, 1.2, -1.2, 1.6) * p + 3.1; a *= 0.5; }
+  return v;
+}
+float bump(float x, float c, float w) { float d = (x - c) / w; return exp(-d * d); }
+
+// A paler range far behind the massif (just a skyline in the haze).
+float farRange(float az) {
+  float r = 0.07 * bump(az, -0.55, 0.3) + 0.05 * bump(az, -0.05, 0.22);
+  return r * (0.8 + 0.4 * fbm1(az * 6.0 + 4.0)) - 0.004;
+}
+float headland(float az) {
+  float h = 0.05 * bump(az, 0.6, 0.15) + 0.026 * bump(az, 0.38, 0.11);
+  h *= smoothstep(0.12, 0.26, az);
+  float trees = (0.6 * noise1(az * 170.0) + 0.4 * noise1(az * 360.0)) * 0.008;
+  return h + trees * smoothstep(0.004, 0.012, h) - 0.002;
+}
+
+// Direction the town is lit from. We mostly look toward the sun, which would
+// leave every wall facing us in shade; fold the light round to our side so
+// facades read with form and texture.
+vec3 keyLight(vec3 L) { return normalize(vec3(L.x, L.y, abs(L.z) * 0.55 + 0.1)); }
+
+// Light on a surface with normal n: sky from above, sun and moon, and haze
+// toward the horizon colour with distance (km).
+vec3 landShade(vec3 rd, vec3 albedo, vec3 n, float ao, float dist) {
+  float el = asin(clamp(rd.y, -1.0, 1.0));
+  vec3 sky = lut(vec3(0.0, 1.0, 0.0)) * uExposure;
+  vec3 hz = lut(normalize(vec3(rd.x, 0.05, rd.z))) * uExposure;
+  vec3 amb = (sky * (0.18 + 0.16 * n.y) + hz * 0.1) * ao + vec3(0.012, 0.018, 0.035) * uNight * ao;
+  float sunUp = clamp(uSun.y * 3.0 + 0.1, 0.0, 1.0);
+  vec3 lit = amb
+    + sunLight() * uExposure * sunUp * max(dot(n, keyLight(uSun)), 0.0) * 1.5
+    + MOON_LIGHT * 0.07 * uNight * smoothstep(0.0, 0.1, uMoon.y) * max(dot(n, keyLight(uMoon)), 0.0);
+  vec3 c = albedo * lit;
+  vec3 horiz = normalize(vec3(rd.x, 0.015, rd.z));
+  float fog = 1.0 - exp(-dist / 22.0) + 0.12 * exp(-max(el, 0.0) / 0.014) * step(1.0, dist);
+  return mix(c, lut(horiz) * uExposure + nightSky(horiz), clamp(fog, 0.0, 1.0));
+}
+
+// ── The mountain: a real height field, ray-marched ─────────────────────────
+// World units are km; the camera stands 2 m above the sea at the origin,
+// looking along -z. The massif sits 5–8 km away on the left: a main summit,
+// a second top, a lower shoulder and ridges running down to the shore.
+float cone(vec2 p, vec2 c, float r) {
+  float d = length(p - c) / r;
+  return mix(exp(-2.2 * d), exp(-2.5 * d * d), 0.45);
+}
+float massif(vec2 p) {
+  return 1.2 * cone(p, vec2(-2.25, -5.7), 2.7)
+       + 0.78 * cone(p, vec2(-4.7, -6.2), 2.4)
+       + 0.48 * cone(p, vec2(-0.85, -5.0), 1.7)
+       + 0.4 * cone(p, vec2(-6.6, -3.9), 2.8)
+       + 0.25 * cone(p, vec2(-3.3, -3.6), 1.6); // a spur running toward us
+}
+float ridged3(vec2 p) {
+  float v = 0.0, a = 0.5;
+  for (int i = 0; i < 3; i++) { float n = 1.0 - abs(noise(p) * 2.0 - 1.0); v += a * n * n; p = mat2(1.6, 1.2, -1.2, 1.6) * p + 3.1; a *= 0.5; }
+  return v;
+}
+// Coarse terrain for marching and shadows; fine adds small rock detail for normals.
+float terrainCoarse(vec2 p) {
+  float b = massif(p);
+  float e = ridged3(p * 1.5 + 4.0);
+  return b + (e - 0.42) * 0.32 * smoothstep(0.04, 0.7, b) - 0.07;
+}
+float terrainFine(vec2 p) {
+  float b = massif(p);
+  float e = ridged2(p * 1.5 + 4.0);
+  return b + (e - 0.42) * 0.32 * smoothstep(0.04, 0.7, b) - 0.07 + (fbm(p * 9.0) - 0.5) * 0.035;
+}
+
+// March a ray against the terrain; returns distance (km) or -1.
+float marchTerrain(vec3 ro, vec3 rd, int quality) {
+  // only the left part of the view holds the massif
+  if (rd.y > 0.27 || rd.y < -0.003 || rd.x > 0.25 * -rd.z) return -1.0;
+  float t = 1.5;
+  float lastT = t;
+  for (int i = 0; i < 100; i++) {
+    if (quality == 0 && i >= 40) break;
+    vec3 p = ro + rd * t;
+    float d = p.y - terrainCoarse(p.xz);
+    if (d < 0.0) {
+      // bisect between the last two samples so slopes don't show steps
+      float a = lastT, b = t;
+      for (int k = 0; k < 5; k++) {
+        float m = 0.5 * (a + b);
+        vec3 q = ro + rd * m;
+        if (q.y - terrainCoarse(q.xz) < 0.0) b = m; else a = m;
+      }
+      return 0.5 * (a + b);
+    }
+    if (p.y > 1.35) break; // above the highest summit and still climbing
+    lastT = t;
+    t += max(0.006 * t, d * 0.45);
+    if (t > 26.0) break;
+  }
+  return -1.0;
+}
+
+float terrainShadow(vec3 p, vec3 L) {
+  if (L.y < -0.02) return 0.0;
+  float res = 1.0, t = 0.05;
+  for (int i = 0; i < 10; i++) {
+    vec3 q = p + L * t;
+    float d = q.y - terrainCoarse(q.xz);
+    res = min(res, 10.0 * d / t);
+    if (res < 0.02) break;
+    t += max(0.08, d * 0.6);
+  }
+  return clamp(res, 0.0, 1.0);
+}
+
+vec3 shadeTerrain(vec3 rd, float t, bool fine) {
+  vec3 p = vec3(0.0, 0.002, 0.0) + rd * t;
+  const float e = 0.012;
+  vec3 n = fine
+    ? normalize(vec3(terrainFine(p.xz - vec2(e, 0.0)) - terrainFine(p.xz + vec2(e, 0.0)), 2.0 * e,
+                     terrainFine(p.xz - vec2(0.0, e)) - terrainFine(p.xz + vec2(0.0, e))))
+    : normalize(vec3(terrainCoarse(p.xz - vec2(e * 4.0, 0.0)) - terrainCoarse(p.xz + vec2(e * 4.0, 0.0)), 8.0 * e,
+                     terrainCoarse(p.xz - vec2(0.0, e * 4.0)) - terrainCoarse(p.xz + vec2(0.0, e * 4.0))));
+  float h = p.y;
+  float slope = n.y;
+
+  // materials by height and steepness: forest low down, rock, snow on top
+  float treeLine = 0.36 + 0.08 * noise(p.xz * 3.0);
+  float forest = (1.0 - smoothstep(treeLine - 0.05, treeLine + 0.03, h)) * smoothstep(0.55, 0.7, slope);
+  float snowLine = 0.55 + 0.1 * noise(p.xz * 2.5);
+  float snow = smoothstep(snowLine, snowLine + 0.08, h + 0.12 * (slope - 0.6)) * smoothstep(0.35, 0.6, slope);
+  snow = max(snow, smoothstep(0.85, 1.0, h) * smoothstep(0.15, 0.4, slope)); // the summit is white
+  vec3 rock = mix(vec3(0.33, 0.3, 0.28), vec3(0.52, 0.48, 0.43), noise(p.xz * 18.0));
+  rock *= 0.85 + 0.25 * noise(vec2(h * 60.0, p.x * 3.0)); // strata
+  vec3 scrub = vec3(0.32, 0.31, 0.22);
+  float tex = fine ? noise(p.xz * 140.0) : 0.5;
+  vec3 trees = vec3(0.04, 0.07, 0.045) * (0.6 + 0.9 * tex);
+  vec3 alb = mix(rock, scrub, smoothstep(treeLine + 0.15, treeLine, h) * 0.6);
+  alb = mix(alb, trees, forest);
+  alb = mix(alb, vec3(0.92, 0.94, 0.98), snow);
+  // a pale beach where the land meets the water
+  alb = mix(alb, vec3(0.7, 0.64, 0.52), smoothstep(0.03, 0.0, h));
+
+  // as with the town, fold the sunlight partly round to our side so the
+  // mountain's form reads even when the sun is behind it
+  vec3 L = normalize(mix(uSun, keyLight(uSun), 0.6));
+  float sh = fine ? terrainShadow(p + n * 0.01, L) : 1.0;
+  vec3 sky = lut(vec3(0.0, 1.0, 0.0)) * uExposure;
+  vec3 amb = sky * (0.22 + 0.25 * n.y) + vec3(0.012, 0.018, 0.035) * uNight;
+  float sunUp = clamp(uSun.y * 3.0 + 0.1, 0.0, 1.0);
+  vec3 lit = amb
+    + sunLight() * uExposure * sunUp * max(dot(n, L), 0.0) * sh * 2.0
+    + MOON_LIGHT * 0.09 * uNight * smoothstep(0.0, 0.1, uMoon.y) * max(dot(n, uMoon), 0.0);
+  vec3 c = alb * lit;
+  // haze with distance, thicker low down
+  vec3 horiz = normalize(vec3(rd.x, 0.015, rd.z));
+  float fog = 1.0 - exp(-t / 30.0) * exp(-0.2 * exp(-h / 0.2));
+  return mix(c, lut(horiz) * uExposure + nightSky(horiz), clamp(fog, 0.0, 1.0));
+}
+
+// rgb = land colour, a = coverage; glow = light from lamps, added on top.
+vec4 landscape(vec3 rd, bool fine, out vec3 glow) {
+  glow = vec3(0.0);
+  float az = atan(rd.x, -rd.z) / uLandScale;
+  float el = asin(clamp(rd.y, -1.0, 1.0));
+  float px = 1.2 / (uRes.y * uFocal); // one pixel, in radians
+  vec4 o = vec4(0.0);
+
+  // far range, ~25 km: pale and blue with distance
+  float fr = farRange(az);
+  float fra = smoothstep(-px, px, fr - el);
+  if (fra > 0.0) {
+    float sl = (farRange(az + 0.01) - farRange(az - 0.01)) / 0.02;
+    vec3 n = normalize(vec3(-sl * 2.0, 0.5, 0.85));
+    o = vec4(landShade(rd, vec3(0.32, 0.32, 0.33), n, 0.9, 25.0), fra);
+  }
+
+  // the massif, a real 3D height field (squeezed with the rest on narrow screens)
+  vec3 rdT = normalize(vec3(sin(az) * cos(el), sin(el), -cos(az) * cos(el)));
+  float tm = marchTerrain(vec3(0.0, 0.002, 0.0), rdT, fine ? 1 : 0);
+  if (tm > 0.0) o = vec4(shadeTerrain(rdT, tm, fine), 1.0);
+
+  // forested headland, ~3 km
+  float h = headland(az);
+  float ha = smoothstep(-px, px, h - el);
+  if (ha > 0.0) {
+    float sl = (headland(az + 0.006) - headland(az - 0.006)) / 0.012;
+    float tex = fine ? fbm(vec2(az * 260.0, el * 260.0)) : 0.5;
+    vec3 n = normalize(vec3(-sl * 1.5 + (tex - 0.5) * 0.8, 0.6, 0.8));
+    o = mix(o, vec4(landShade(rd, vec3(0.06, 0.1, 0.06) * (0.7 + 0.6 * tex), n, 0.8, 3.0), 1.0), ha);
+  }
+
+  // lighthouse on the tip of the headland
+  float lhAz = 0.76, lhBase = headland(lhAz);
+  float inTower = step(abs(az - lhAz), 0.0018) * step(el, lhBase + 0.014) * step(lhBase - 0.004, el);
+  if (inTower > 0.0) {
+    vec3 alb = mix(vec3(0.88, 0.85, 0.8), vec3(0.62, 0.12, 0.1), step(0.5, fract((el - lhBase) / 0.0045)));
+    o = mix(o, vec4(landShade(rd, alb, vec3(0.0, 0.0, 1.0), 1.0, 2.6), 1.0), inTower);
+  }
+  vec2 lamp = vec2(az - lhAz, el - (lhBase + 0.0155));
+  float sweep = pow(max(cos(uTime * 1.3), 0.0), 18.0);
+  glow += vec3(1.0, 0.92, 0.75) * exp(-dot(lamp, lamp) / 0.0000012) * (0.6 + 4.0 * sweep) * uLights;
+
+  // (the harbour town itself is real 3D geometry, drawn by town/Town.tsx)
+  return o;
+}
+
 vec3 skyColor(vec3 rd, bool discs) {
   vec3 c = lut(rd) * uExposure + nightSky(rd) + stars(rd);
   if (discs) {
@@ -231,7 +466,11 @@ vec3 skyColor(vec3 rd, bool discs) {
     }
   }
   vec4 cl = clouds(rd, c);
-  return mix(c, cl.rgb, cl.a);
+  c = mix(c, cl.rgb, cl.a);
+  // land sits in front of the sky; lights add on top
+  vec3 glow;
+  vec4 land = landscape(rd, discs, glow);
+  return mix(c, land.rgb, land.a) + glow;
 }
 
 // Sea height (0..1) from a sum of sharp-crested waves. Each wave drags the
@@ -260,7 +499,9 @@ vec3 aces(vec3 x) {
 
 void main() {
   vec2 uv = (gl_FragCoord.xy - 0.5 * uRes) / uRes.y;
-  vec3 rd = normalize(vec3(uv.x, uv.y - ${HORIZON_UV.toFixed(4)}, -${FOCAL.toFixed(4)}));
+  vec3 rd = normalize(vec3(uv.x, uv.y - ${HORIZON_UV.toFixed(4)}, -uFocal));
+  float cy = cos(uYaw), sy = sin(uYaw);
+  rd = vec3(cy * rd.x - sy * rd.z, rd.y, sy * rd.x + cy * rd.z);
 
   vec3 col;
   if (rd.y >= 0.0) {
@@ -319,11 +560,16 @@ const LUT_H = 96;
 
 export default function DaySky({
   hour,
+  yaw,
+  focal,
   /** Render resolution relative to CSS pixels (device pixel ratio capped at 1.5). */
   renderScale = 0.8,
 }: {
   /** Hour of the day, 0..24 (may run past 24 for the late moon). */
   hour: MotionValue<number>;
+  /** Camera heading (radians) and zoom, animated between stops. */
+  yaw: MotionValue<number>;
+  focal: MotionValue<number>;
   renderScale?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -391,6 +637,10 @@ export default function DaySky({
       night: u(mainProg, 'uNight'),
       exposure: u(mainProg, 'uExposure'),
       starSpin: u(mainProg, 'uStarSpin'),
+      lights: u(mainProg, 'uLights'),
+      landScale: u(mainProg, 'uLandScale'),
+      yaw: u(mainProg, 'uYaw'),
+      focal: u(mainProg, 'uFocal'),
       lut: u(mainProg, 'uLut'),
     };
 
@@ -466,6 +716,11 @@ export default function DaySky({
       gl.uniform1f(M.night, s.night);
       gl.uniform1f(M.exposure, exposure);
       gl.uniform1f(M.starSpin, h * 0.04);
+      gl.uniform1f(M.lights, townLights(h));
+      gl.uniform1f(M.landScale, s.landScale);
+      // narrow screens turn and zoom less, so the whole subject stays in frame
+      gl.uniform1f(M.yaw, yaw.get() * s.landScale);
+      gl.uniform1f(M.focal, 1 + (focal.get() - 1) * s.landScale * s.landScale);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
 
       frame = requestAnimationFrame(draw);
@@ -477,7 +732,7 @@ export default function DaySky({
       window.removeEventListener('resize', resize);
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
-  }, [hour, renderScale]);
+  }, [hour, yaw, focal, renderScale]);
 
   return (
     <div

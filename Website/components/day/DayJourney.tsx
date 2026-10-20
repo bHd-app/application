@@ -15,6 +15,7 @@ import { EXPERIENCES, STOPS, formatHour, type Experience, type Stop } from '@/li
 import DaySky from './DaySky';
 import ExperienceIcon from './ExperienceIcon';
 import Vignette from './Vignettes';
+import Town from './town/Town';
 
 // The page is one screen. Each scroll (wheel, swipe, arrow key) steps to the
 // next stop; in between, the clock runs forward like a time-lapse so the sun
@@ -29,6 +30,11 @@ const WHEEL_QUIET_MS = 220;
 
 export default function DayJourney() {
   const hour = useMotionValue(STOPS[0].hour);
+  const yaw = useMotionValue(STOPS[0].cam.yaw);
+  const focal = useMotionValue(STOPS[0].cam.focal);
+  const camX = useMotionValue(STOPS[0].cam.pos[0]);
+  const camY = useMotionValue(STOPS[0].cam.pos[1]);
+  const camZ = useMotionValue(STOPS[0].cam.pos[2]);
   const [index, setIndex] = useState(0);
   const [moving, setMoving] = useState(false);
   const busy = useRef(false);
@@ -42,8 +48,19 @@ export default function DayJourney() {
       busy.current = true;
       setMoving(true);
       const gap = Math.abs(STOPS[target].hour - hour.get());
+      const duration = lapseSeconds(gap);
+      // the camera turns and zooms to the next subject during the time-lapse
+      animate(yaw, STOPS[target].cam.yaw, { duration, ease: EASE });
+      animate(focal, STOPS[target].cam.focal, { duration, ease: EASE });
+      // fly to the next spot, rising over the roofs when moving across town
+      const [tx, ty, tz] = STOPS[target].cam.pos;
+      const dist = Math.hypot(tx - camX.get(), tz - camZ.get());
+      const over = dist > 30 ? Math.max(camY.get(), ty) + Math.min(40, dist * 0.25) : (camY.get() + ty) / 2;
+      animate(camX, tx, { duration, ease: EASE });
+      animate(camZ, tz, { duration, ease: EASE });
+      animate(camY, [camY.get(), over, ty], { duration, ease: EASE, times: [0, 0.5, 1] });
       animate(hour, STOPS[target].hour, {
-        duration: lapseSeconds(gap),
+        duration,
         ease: EASE,
         onComplete: () => {
           indexRef.current = target;
@@ -53,7 +70,7 @@ export default function DayJourney() {
         },
       });
     },
-    [hour],
+    [hour, yaw, focal, camX, camY, camZ],
   );
 
   // Wheel, touch and keyboard all step one stop at a time.
@@ -114,7 +131,8 @@ export default function DayJourney() {
       animate={{ opacity: 1 }}
       transition={{ duration: 1.8, ease: [0.22, 1, 0.36, 1] }}
     >
-      <DaySky hour={hour} />
+      <DaySky hour={hour} yaw={yaw} focal={focal} />
+      <Town hour={hour} yaw={yaw} focal={focal} camX={camX} camY={camY} camZ={camZ} />
 
       {/* Soft vignette so the type always has something to sit on */}
       <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(120%_80%_at_50%_40%,transparent_55%,rgba(2,6,12,0.45)_100%)]" />
@@ -144,7 +162,8 @@ function Header({ hour }: { hour: MotionValue<number> }) {
     h < 6.2 ? 'Before dawn'
     : h < 11 ? 'Morning'
     : h < 15 ? 'Midday'
-    : h < 19.6 ? 'Afternoon'
+    : h < 17.5 ? 'Afternoon'
+    : h < 19.6 ? 'Evening'
     : h < 20.6 ? 'Dusk'
     : 'Night';
 
