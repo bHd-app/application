@@ -5,7 +5,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { MotionValue } from 'framer-motion';
 
-import { HORIZON_UV, TOWN_SPOTS, sky, townLights } from '@/lib/day';
+import { HIKE_SPOT, HORIZON_UV, TOWN_SPOTS, sky, townLights } from '@/lib/day';
+import { buildNature } from '../nature/nature';
 import { aces, exposureFor, skyRadiance, sunLight } from '@/lib/skylight';
 import { createMaterials, lampPost, makeBuilding, mulberry, stoneTexture } from './diorama';
 import { createTownMaterials, makeCookingStudio, makeHouse, makePottery, makeRestaurant, signMaterial } from './places';
@@ -184,13 +185,14 @@ function buildTown() {
   for (const az of [AZ_A + 0.03, AZ_A + 0.31]) {
     place(makeBuilding('dock', M, R), az, 301, 1.3, S * 1.6, faceViewer(az) + Math.PI);
   }
-  return { town: mergeByMaterial(town), M, T, glows, lamps };
+  return { town: mergeByMaterial(town), M, T, glows, lamps, ground };
 }
 
 export default function Town({
   hour,
   yaw,
   focal,
+  pitch,
   camX,
   camY,
   camZ,
@@ -198,6 +200,7 @@ export default function Town({
   hour: MotionValue<number>;
   yaw: MotionValue<number>;
   focal: MotionValue<number>;
+  pitch: MotionValue<number>;
   /** Camera position in metres (see Camera in lib/day.ts). */
   camX: MotionValue<number>;
   camY: MotionValue<number>;
@@ -224,7 +227,7 @@ export default function Town({
     const camera = new THREE.PerspectiveCamera(50, 1, 1, 20000);
     camera.position.set(0, 2, 0);
 
-    const { town, M, T, glows, lamps } = buildTown();
+    const { town, M, T, glows, lamps, ground } = buildTown();
     renderer.localClippingEnabled = true;
     const pointLights = lamps.map((l) => {
       const p = new THREE.PointLight(l.color, 0, 60, 2);
@@ -236,19 +239,23 @@ export default function Town({
 
     // reflection in the sea: the town mirrored under the water line, dimmer
     const reflection = town.clone(true);
-    reflection.scale.y = -1;
+    // stretched a little, as reflections are on a rippled sea
+    reflection.scale.y = -1.25;
     const reflMats = new Map<THREE.Material, THREE.Material>();
     reflection.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
       mesh.castShadow = false;
       mesh.receiveShadow = false;
+      // only the buildings are mirrored: the paving's stone pattern would
+      // print a grid onto the sea
+      if (mesh.material === ground) mesh.visible = false;
       const swap = (m: THREE.Material) => {
         if (!reflMats.has(m)) {
           const c = m.clone() as THREE.MeshStandardMaterial;
           c.side = THREE.DoubleSide;
           c.transparent = true;
-          c.opacity = 0.28;
+          c.opacity = 0.18;
           c.depthWrite = false;
           // only what is mirrored below the water line (posts under the
           // jetties would otherwise poke up out of the sea)
@@ -261,6 +268,11 @@ export default function Town({
       mesh.renderOrder = -1;
     });
     scene.add(reflection);
+
+    // the hiking trail on the mountainside (not mirrored: no sea in view up there)
+    const nature = buildNature(new THREE.Vector3(HIKE_SPOT.x, 0, HIKE_SPOT.z));
+    scene.add(nature.group);
+    const clock = new THREE.Clock();
 
     // lights: sun (folded toward us like the shader does), moon, sky
     const sunL = new THREE.DirectionalLight(0xffffff, 1);
@@ -313,7 +325,8 @@ export default function Town({
       camera.aspect = aspect;
       camera.fov = (2 * Math.atan(0.5 / f) * 180) / Math.PI;
       camera.position.set(camX.get(), camY.get(), camZ.get());
-      camera.rotation.set(0, -yaw.get() * s.landScale, 0);
+      camera.rotation.order = 'YXZ';
+      camera.rotation.set(pitch.get(), -yaw.get() * s.landScale, 0);
       camera.updateProjectionMatrix();
       camera.projectionMatrix.elements[9] = -2 * HORIZON_UV;
       camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
@@ -326,7 +339,6 @@ export default function Town({
         const sunUp = Math.min(1, Math.max(0, s.sun[1] * 3 + 0.1));
         sunL.color.setRGB(sl[0], sl[1], sl[2]);
         sunL.intensity = Math.PI * 2.0 * exposure * sunUp;
-        sunL.position.copy(center).addScaledVector(fold(s.sun), 900);
         const zen = skyRadiance([0, 1, 0], s.sun);
         const tAz = (AZ_A + AZ_B) / 2;
         const hz = skyRadiance([Math.sin(tAz) * 0.9988, 0.05, -Math.cos(tAz) * 0.9988], s.sun);
@@ -346,7 +358,7 @@ export default function Town({
       M.lamp.emissiveIntensity = lights * 3.5;
       T.bulb.emissiveIntensity = lights * 8;
       // shop and workshop interiors read warm even by day
-      T.interior.emissiveIntensity = 0.35 + lights * 1.5;
+      T.interior.emissiveIntensity = 0.3 + lights * 1.0;
       T.kiln.emissiveIntensity = 1.2 + lights * 3;
       for (const m of T.signs) m.emissiveIntensity = lights * 0.9;
       for (const [src, dst] of reflMats) {
@@ -354,10 +366,29 @@ export default function Town({
         const b = dst as THREE.MeshStandardMaterial;
         b.emissiveIntensity = a.emissiveIntensity;
       }
-      for (const { p, power } of pointLights) p.intensity = lights * power * 1100;
+      for (const { p, power } of pointLights) p.intensity = lights * power * 600;
       glowMat.opacity = lights;
       kilnMat.opacity = 0.35 + lights * 0.65;
       for (const sp of sprites) sp.visible = sp.material === kilnMat || lights > 0.01;
+
+      // shadows follow the camera (town or trail)
+      const onTrail = camX.get() < -1500;
+      const focus = onTrail ? new THREE.Vector3(HIKE_SPOT.x, 300, HIKE_SPOT.z) : center.clone();
+      // a wider (coarser) shadow area for the whole trail slope
+      const span = onTrail ? 650 : 260;
+      if (sc.right !== span) {
+        sc.left = -span; sc.right = span; sc.top = span * 0.8; sc.bottom = -span * 0.8;
+        sc.updateProjectionMatrix();
+      }
+      sunL.target.position.copy(focus);
+      sunL.position.copy(focus).addScaledVector(fold(s.sun), 900);
+      // the trail ground reads from across the bay; the trees only up close
+      const toTrail = Math.hypot(camX.get() - HIKE_SPOT.x, camZ.get() - HIKE_SPOT.z);
+      nature.group.visible = toTrail < 1500; // from further off the shader draws the trail
+      const treesOn = toTrail < 1500;
+      for (const m of nature.treeMeshes) m.visible = treesOn;
+      const t = clock.getElapsedTime();
+      if (treesOn) for (const tr of nature.trees) tr.update(t);
 
       renderer.render(scene, camera);
       frame = requestAnimationFrame(draw);
@@ -369,7 +400,7 @@ export default function Town({
       window.removeEventListener('resize', resize);
       renderer.dispose();
     };
-  }, [hour, yaw, focal, camX, camY, camZ]);
+  }, [hour, yaw, focal, pitch, camX, camY, camZ]);
 
   return <canvas ref={ref} className="pointer-events-none absolute inset-0 block h-full w-full" />;
 }

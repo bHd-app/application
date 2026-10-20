@@ -1,3 +1,5 @@
+import { terrain } from './terrain';
+
 // One day by the sea. The page steps between a few stops (dawn, four
 // experiences, the gift card); between stops the clock runs forward like a
 // time-lapse. Everything time-based (sun, moon, clock) reads from here.
@@ -154,7 +156,7 @@ export function townLights(hour: number) {
  * only the 3D town is drawn with this offset — the sky, sea and mountains are
  * kilometres away and barely shift).
  */
-export type Camera = { yaw: number; focal: number; pos: [number, number, number] };
+export type Camera = { yaw: number; focal: number; pos: [number, number, number]; pitch: number };
 
 export type Stop = { hour: number; cam: Camera } & (
   | { kind: 'intro' }
@@ -167,35 +169,49 @@ export const TOWN_SPOTS = {
   restaurant: { az: 0.2, d: 338, y: 1.6 },
   cook: { az: 0.37, d: 338, y: 1.6 },
   pottery: { az: 0.285, d: 404, y: 7 },
+  /** the middle of the town, for the overview */
+  center: { az: 0.3, d: 410, y: 4 },
 };
 type Spot = (typeof TOWN_SPOTS)[keyof typeof TOWN_SPOTS];
 
 /** A camera standing `back` metres in front of a building (and `side` to its right), looking at it. */
-function frame(spot: Spot, back: number, height: number, side: number, focal: number): Camera {
+function frame(spot: Spot, back: number, height: number, side: number, focal: number, pitch = 0): Camera {
   const bx = Math.sin(spot.az) * spot.d;
   const bz = -Math.cos(spot.az) * spot.d;
   const cx = bx - Math.sin(spot.az) * back + Math.cos(spot.az) * side;
   const cz = bz + Math.cos(spot.az) * back + Math.sin(spot.az) * side;
-  return { yaw: Math.atan2(bx - cx, -(bz - cz)), focal, pos: [cx, height, cz] };
+  return { yaw: Math.atan2(bx - cx, -(bz - cz)), focal, pos: [cx, height, cz], pitch };
 }
 
 const ORIGIN: [number, number, number] = [0, 2, 0];
 
-// Each experience frames its own part of the coast: the mountain at sunrise,
-// then into the town — the taverna at midday, the cooking studio as its first
-// lights come on, the pottery workshop at night.
+// The hiking trail: from the water, the camera turns and zooms toward the
+// mountain so the whole range and the trail climbing it are in view; it
+// stays low, so the sea and horizon hold steady.
+export const HIKE_SPOT = { x: -2860, z: -3400 }; // middle of the trail
+const hikeEye = { x: -650, z: -620 };
+const hikeCam: Camera = {
+  pos: [hikeEye.x, 6, hikeEye.z],
+  yaw: Math.atan2(HIKE_SPOT.x - hikeEye.x, -(HIKE_SPOT.z - hikeEye.z)) + 0.04,
+  pitch: 0.02,
+  focal: 1.8,
+};
+
 const EXPERIENCE_CAMS: Record<Experience['id'], Camera> = {
-  hike: { yaw: -0.3, focal: 1.35, pos: ORIGIN },
-  lunch: frame(TOWN_SPOTS.restaurant, 70, 3.0, 9, 1.25),
+  hike: hikeCam,
+  // midday: the town from the water in front, on its coast with the
+  // mountains behind it (the taverna is on its waterfront); then into the streets
+  lunch: frame(TOWN_SPOTS.center, 380, 30, 0, 1.25, Math.atan2(4 - 30, 380)),
   cook: frame(TOWN_SPOTS.cook, 44, 3.2, -6, 1.2),
-  pottery: frame(TOWN_SPOTS.pottery, 32, 9.2, 5, 1.15),
+  pottery: frame(TOWN_SPOTS.pottery, 32, 9.2, 5, 1.15, 0.02),
 };
 
 export const STOPS: Stop[] = [
-  { kind: 'intro', hour: 5.6, cam: { yaw: -0.08, focal: 1.0, pos: ORIGIN } },
+  { kind: 'intro', hour: 5.6, cam: { yaw: -0.08, focal: 1.0, pos: ORIGIN, pitch: 0 } },
   ...EXPERIENCES.map(
     (exp, index) =>
       ({ kind: 'experience', hour: exp.hour, exp, index, cam: EXPERIENCE_CAMS[exp.id] }) as const,
   ),
-  { kind: 'gift', hour: 23.4, cam: { yaw: 0, focal: 1.0, pos: ORIGIN } },
+  // the closing shot: the whole moonlit bay from a little above the water
+  { kind: 'gift', hour: 23.4, cam: { yaw: -0.22, focal: 1.05, pos: [40, 45, 120], pitch: -0.03 } },
 ];

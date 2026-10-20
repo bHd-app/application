@@ -32,6 +32,7 @@ export default function DayJourney() {
   const hour = useMotionValue(STOPS[0].hour);
   const yaw = useMotionValue(STOPS[0].cam.yaw);
   const focal = useMotionValue(STOPS[0].cam.focal);
+  const pitch = useMotionValue(STOPS[0].cam.pitch);
   const camX = useMotionValue(STOPS[0].cam.pos[0]);
   const camY = useMotionValue(STOPS[0].cam.pos[1]);
   const camZ = useMotionValue(STOPS[0].cam.pos[2]);
@@ -52,10 +53,12 @@ export default function DayJourney() {
       // the camera turns and zooms to the next subject during the time-lapse
       animate(yaw, STOPS[target].cam.yaw, { duration, ease: EASE });
       animate(focal, STOPS[target].cam.focal, { duration, ease: EASE });
+      animate(pitch, STOPS[target].cam.pitch, { duration, ease: EASE });
       // fly to the next spot, rising over the roofs when moving across town
       const [tx, ty, tz] = STOPS[target].cam.pos;
       const dist = Math.hypot(tx - camX.get(), tz - camZ.get());
-      const over = dist > 30 ? Math.max(camY.get(), ty) + Math.min(40, dist * 0.25) : (camY.get() + ty) / 2;
+      // (low flights over the water stay low, so the horizon holds still)
+      const over = dist > 30 && Math.max(camY.get(), ty) > 8 ? Math.max(camY.get(), ty) + Math.min(60, dist * 0.06 + 20) : (camY.get() + ty) / 2;
       animate(camX, tx, { duration, ease: EASE });
       animate(camZ, tz, { duration, ease: EASE });
       animate(camY, [camY.get(), over, ty], { duration, ease: EASE, times: [0, 0.5, 1] });
@@ -70,7 +73,7 @@ export default function DayJourney() {
         },
       });
     },
-    [hour, yaw, focal, camX, camY, camZ],
+    [hour, yaw, focal, pitch, camX, camY, camZ],
   );
 
   // Wheel, touch and keyboard all step one stop at a time.
@@ -131,8 +134,8 @@ export default function DayJourney() {
       animate={{ opacity: 1 }}
       transition={{ duration: 1.8, ease: [0.22, 1, 0.36, 1] }}
     >
-      <DaySky hour={hour} yaw={yaw} focal={focal} />
-      <Town hour={hour} yaw={yaw} focal={focal} camX={camX} camY={camY} camZ={camZ} />
+      <DaySky hour={hour} yaw={yaw} focal={focal} pitch={pitch} camX={camX} camY={camY} camZ={camZ} />
+      <Town hour={hour} yaw={yaw} focal={focal} pitch={pitch} camX={camX} camY={camY} camZ={camZ} />
 
       {/* Soft vignette so the type always has something to sit on */}
       <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(120%_80%_at_50%_40%,transparent_55%,rgba(2,6,12,0.45)_100%)]" />
